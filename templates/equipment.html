@@ -1,0 +1,723 @@
+<!-- templates/equipment.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Оборудование - Локальная компьютерная сеть{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+<style>
+.equipment-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.85em;
+}
+.badge-router { background-color: #6f42c1; color: white; }
+.badge-switch { background-color: #20c997; color: white; }
+.badge-firewall { background-color: #dc3545; color: white; }
+.badge-access { background-color: #fd7e14; color: white; }
+#loading-row { display: none; }
+.table-actions .btn { margin-right: 5px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-3">
+            <div class="col-12">
+                <h1><i class="bi bi-router"></i> Управление оборудованием</h1>
+                <p class="lead">Просмотр сетевого оборудования (маршрутизаторы, коммутаторы)</p>
+            </div>
+        </div>
+
+        <!-- Статистика -->
+        <div class="row mb-4" id="statistics-row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body py-2">
+                        <div class="row text-center">
+                            <div class="col-md-2 col-6">
+                                <h5 class="mb-0" id="total-equipment">0</h5>
+                                <small class="text-muted">Всего</small>
+                            </div>
+                            <div class="col-md-2 col-6">
+                                <h5 class="mb-0" id="avg-ports">0</h5>
+                                <small class="text-muted">Сред. портов</small>
+                            </div>
+                            <div class="col-md-2 col-6">
+                                <h5 class="mb-0" id="types-count">0</h5>
+                                <small class="text-muted">Типов</small>
+                            </div>
+                            <div class="col-md-2 col-6">
+                                <h5 class="mb-0" id="total-networks">0</h5>
+                                <small class="text-muted">Сетей</small>
+                            </div>
+                            <div class="col-md-4 col-12 mt-md-0 mt-2">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="loadStatistics()">
+                                    <i class="bi bi-arrow-clockwise"></i> Обновить статистику
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Фильтры и действия -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <select id="typeFilter" class="form-select">
+                                    <option value="">Все типы</option>
+                                    <option value="Router">Маршрутизатор</option>
+                                    <option value="Switch">Коммутатор</option>
+                                    <option value="Firewall">Фаервол</option>
+                                    <option value="Access Point">Точка доступа</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="number" id="minPorts" class="form-control" placeholder="Мин. портов" min="0">
+                            </div>
+                            <div class="col-md-2">
+                                <input type="number" id="bandwidthFilter" class="form-control" placeholder="Проп. способность" min="0">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" id="searchFilter" class="form-control" placeholder="Поиск по типу, проп. способности...">
+                            </div>
+                            <div class="col-md-2 d-flex gap-2">
+                                <button class="btn btn-primary flex-fill" onclick="applyFilters()">
+                                    <i class="bi bi-search"></i> Поиск
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="resetFilters()" title="Сбросить">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-4">
+                                <input type="date" id="dateFrom" class="form-control" placeholder="Дата с">
+                            </div>
+                            <div class="col-md-4">
+                                <input type="date" id="dateTo" class="form-control" placeholder="Дата по">
+                            </div>
+                            <div class="col-md-4 d-flex gap-2">
+                                <button class="btn export-btn flex-fill" onclick="exportEquipment()">
+                                    <i class="bi bi-download"></i> Экспорт
+                                </button>
+                                <button class="btn btn-success" onclick="refreshAllEquipment()">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таблица оборудования -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Список оборудования</h5>
+                        <div class="d-flex align-items-center">
+                            <span class="me-3 text-muted" id="total-count">Загрузка...</span>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="refreshTable()">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table id="equipmentTable" class="table table-striped table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Тип</th>
+                                        <th>Пропускная способность</th>
+                                        <th>Тип пропускной</th>
+                                        <th>Количество портов</th>
+                                        <th>Дата установки</th>
+                                        <th>Количество сетей</th>
+                                        <th width="120" class="text-end">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="equipment-body">
+                                    <tr id="loading-row">
+                                        <td colspan="7" class="text-center py-5">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Загрузка...</span>
+                                            </div>
+                                            <p class="mt-2 text-muted">Загрузка данных...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="dataTables_info" id="pagination-info">Загрузка...</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-end">
+                                    <nav id="pagination-controls">
+                                        <!-- Пагинация загружается динамически -->
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для просмотра деталей -->
+<div class="modal fade" id="equipmentDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-router me-2"></i>Детали оборудования
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="equipment-detail-content">
+                    <!-- Содержимое загружается динамически -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-primary" onclick="printEquipmentDetails()">
+                    <i class="bi bi-printer"></i> Печать
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно сетей оборудования -->
+<div class="modal fade" id="equipmentNetworksModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-diagram-3 me-2"></i>Сети оборудования
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="equipment-networks-content">
+                    <!-- Содержимое загружается динамически -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Глобальные переменные
+let allEquipment = [];
+let filteredEquipment = [];
+let currentPage = 1;
+let itemsPerPage = 25;
+
+$(document).ready(function() {
+    loadStatistics();
+    loadAllEquipment();
+    setupEventListeners();
+});
+
+function setupEventListeners() {
+    // Поиск по Enter
+    $('#searchFilter').on('keypress', function(e) {
+        if (e.which === 13) applyFilters();
+    });
+
+    // Автоматический фильтр при изменении
+    let filterTimer;
+    $('#typeFilter, #minPorts, #bandwidthFilter, #dateFrom, #dateTo, #searchFilter').on('input change', function() {
+        clearTimeout(filterTimer);
+        filterTimer = setTimeout(applyFilters, 500);
+    });
+}
+
+function loadStatistics() {
+    $.get('/api/equipment/statistics/')
+        .done(function(data) {
+            $('#total-equipment').text(data.total_equipment || 0);
+            $('#avg-ports').text(Math.round(data.average_ports || 0));
+            $('#types-count').text(data.types_count || 0);
+            $('#total-networks').text(data.total_networks || 0);
+        })
+        .fail(function(xhr) {
+            console.error('Ошибка загрузки статистики:', xhr);
+        });
+}
+
+function loadAllEquipment() {
+    showLoading(true);
+
+    const params = new URLSearchParams();
+
+    // Собираем все фильтры
+    const type = $('#typeFilter').val();
+    const minPorts = $('#minPorts').val();
+    const bandwidth = $('#bandwidthFilter').val();
+    const dateFrom = $('#dateFrom').val();
+    const dateTo = $('#dateTo').val();
+    const search = $('#searchFilter').val();
+
+    if (type) params.append('type', type);
+    if (minPorts) params.append('min_ports', minPorts);
+    if (bandwidth) params.append('bandwidth_min', bandwidth);
+    if (dateFrom) params.append('setup_date_after', dateFrom);
+    if (dateTo) params.append('setup_date_before', dateTo);
+    if (search) params.append('search', search);
+
+    const url = `/api/equipment/${params.toString() ? '?' + params.toString() : ''}`;
+
+    $.get(url)
+        .done(function(data) {
+            allEquipment = data.equipment || data.results || data;
+            applyFilters();
+        })
+        .fail(function(xhr) {
+            showAlert(`Ошибка загрузки: ${xhr.responseJSON?.detail || 'Неизвестная ошибка'}`, 'danger');
+        })
+        .always(function() {
+            showLoading(false);
+        });
+}
+
+function applyFilters() {
+    const typeFilter = $('#typeFilter').val();
+    const minPortsFilter = parseInt($('#minPorts').val()) || 0;
+    const bandwidthFilter = parseInt($('#bandwidthFilter').val()) || 0;
+    const dateFromFilter = $('#dateFrom').val();
+    const dateToFilter = $('#dateTo').val();
+    const searchFilter = $('#searchFilter').val().toLowerCase();
+
+    filteredEquipment = allEquipment.filter(item => {
+        // Фильтр по типу
+        if (typeFilter && item.type.toLowerCase() !== typeFilter.toLowerCase()) return false;
+
+        // Фильтр по минимальному количеству портов
+        if (minPortsFilter && item.port_count < minPortsFilter) return false;
+
+        // Фильтр по пропускной способности
+        if (bandwidthFilter && item.bandwidth < bandwidthFilter) return false;
+
+        // Фильтр по дате
+        if (dateFromFilter && new Date(item.setup_date) < new Date(dateFromFilter)) return false;
+        if (dateToFilter && new Date(item.setup_date) > new Date(dateToFilter)) return false;
+
+        // Универсальный поиск
+        if (searchFilter) {
+            const searchableText = [
+                item.type || '',
+                item.bandwidth?.toString() || '',
+                getBandwidthType(item.bandwidth) || '',
+                item.port_count?.toString() || ''
+            ].join(' ').toLowerCase();
+
+            if (!searchableText.includes(searchFilter)) return false;
+        }
+
+        return true;
+    });
+
+    currentPage = 1;
+    renderEquipment();
+    updatePagination();
+    updateTableInfo();
+}
+
+function renderEquipment() {
+    const tbody = $('#equipment-body');
+    tbody.children().not('#loading-row').remove();
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const equipmentToShow = filteredEquipment.slice(startIndex, endIndex);
+
+    if (!equipmentToShow.length) {
+        tbody.append(`
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <i class="bi bi-info-circle display-6 text-muted mb-3"></i>
+                    <p class="h5 text-muted">Оборудование не найдено</p>
+                    <p class="text-muted">Попробуйте изменить параметры фильтрации</p>
+                </td>
+            </tr>
+        `);
+        return;
+    }
+
+    equipmentToShow.forEach(item => {
+        const bandwidthType = getBandwidthType(item.bandwidth);
+        const networkCount = item.networks_count || (item.networks ? item.networks.length : 0);
+        const typeClass = getTypeClass(item.type);
+
+        tbody.append(`
+            <tr data-equipment-id="${item.id}">
+                <td>
+                    <span class="equipment-badge ${typeClass}">${item.type}</span>
+                </td>
+                <td>
+                    <strong>${item.bandwidth}</strong> Мбит/с
+                </td>
+                <td>${bandwidthType}</td>
+                <td>
+                    <span class="badge bg-info">${item.port_count}</span>
+                </td>
+                <td>${formatDate(item.setup_date)}</td>
+                <td>
+                    <span class="badge ${networkCount > 0 ? 'bg-success' : 'bg-warning'}">
+                        ${networkCount}
+                    </span>
+                    ${networkCount > 0 ? `
+                    <button class="btn btn-sm btn-link p-0 ms-1" onclick="viewEquipmentNetworks(${item.id})"
+                            title="Показать сети">
+                        <i class="bi bi-diagram-3"></i>
+                    </button>` : ''}
+                </td>
+                <td class="text-end">
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-outline-info" onclick="viewEquipmentDetails(${item.id})"
+                                title="Детали">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="refreshEquipment(${item.id})"
+                                title="Обновить">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `);
+    });
+}
+
+function getTypeClass(type) {
+    const typeMap = {
+        'router': 'badge-router',
+        'маршрутизатор': 'badge-router',
+        'switch': 'badge-switch',
+        'коммутатор': 'badge-switch',
+        'firewall': 'badge-firewall',
+        'фаервол': 'badge-firewall',
+        'access point': 'badge-access',
+        'точка доступа': 'badge-access'
+    };
+
+    return typeMap[type.toLowerCase()] || 'badge-secondary';
+}
+
+function getBandwidthType(bandwidth) {
+    if (bandwidth === 100) return 'Базовый интернет';
+    if (bandwidth === 1000) return 'Онлайн-игры';
+    return 'Видеозвонки';
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'Н/Д';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU');
+}
+
+function updatePagination() {
+    const pagination = $('#pagination-controls');
+    pagination.empty();
+
+    const totalPages = Math.ceil(filteredEquipment.length / itemsPerPage);
+
+    if (totalPages <= 1) return;
+
+    let html = '<ul class="pagination pagination-sm mb-0">';
+
+    // Предыдущая страница
+    html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="goToPage(${currentPage - 1}); return false;">Назад</a>
+    </li>`;
+
+    // Страницы
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<li class="page-item ${currentPage === i ? 'active' : ''}">
+            <a class="page-link" href="#" onclick="goToPage(${i}); return false;">${i}</a>
+        </li>`;
+    }
+
+    // Следующая страница
+    html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="goToPage(${currentPage + 1}); return false;">Вперед</a>
+    </li>`;
+
+    html += '</ul>';
+    pagination.html(html);
+}
+
+function goToPage(page) {
+    if (page < 1 || page > Math.ceil(filteredEquipment.length / itemsPerPage)) return;
+    currentPage = page;
+    renderEquipment();
+    updatePagination();
+    updateTableInfo();
+}
+
+function updateTableInfo() {
+    const total = filteredEquipment.length;
+    const start = Math.min((currentPage - 1) * itemsPerPage + 1, total);
+    const end = Math.min(currentPage * itemsPerPage, total);
+
+    let info = `Показано ${start}-${end} из ${total} записей`;
+    if (total === 0) {
+        info = 'Нет данных для отображения';
+    }
+
+    $('#pagination-info').text(info);
+    $('#total-count').text(`Всего: ${total}`);
+}
+
+function viewEquipmentDetails(id) {
+    showLoadingModal();
+
+    $.get(`/api/equipment/${id}/`)
+        .done(function(item) {
+            const bandwidthType = getBandwidthType(item.bandwidth);
+
+            const content = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Основная информация</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tr><th width="40%">Тип:</th><td><span class="equipment-badge ${getTypeClass(item.type)}">${item.type}</span></td></tr>
+                                    <tr><th>Пропускная способность:</th><td>${item.bandwidth} Мбит/с</td></tr>
+                                    <tr><th>Тип пропускной:</th><td>${bandwidthType}</td></tr>
+                                    <tr><th>Количество портов:</th><td><span class="badge bg-info">${item.port_count}</span></td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="bi bi-calendar me-2"></i>Дополнительная информация</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tr><th>Дата установки:</th><td>${formatDate(item.setup_date)}</td></tr>
+                                    <tr><th>ID оборудования:</th><td>${item.id}</td></tr>
+                                    <tr><th>Подключено сетей:</th><td>
+                                        <span class="badge ${item.networks_count > 0 ? 'bg-success' : 'bg-warning'}">
+                                            ${item.networks_count || 0}
+                                        </span>
+                                    </td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            $('#equipment-detail-content').html(content);
+            $('#equipmentDetailModal').modal('show');
+        })
+        .fail(function(xhr) {
+            showAlert(`Ошибка загрузки деталей: ${xhr.responseJSON?.detail || 'Неизвестная ошибка'}`, 'danger');
+        })
+        .always(function() {
+            hideLoadingModal();
+        });
+}
+
+function viewEquipmentNetworks(id) {
+    showLoadingModal();
+
+    $.get(`/api/equipment/${id}/networks/`)
+        .done(function(data) {
+            const networks = data.results || data;
+            let content = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>VLAN</th>
+                                <th>Диапазон IP</th>
+                                <th>Маска подсети</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            if (networks.length === 0) {
+                content += `
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-3">
+                            Нет подключенных сетей
+                        </td>
+                    </tr>
+                `;
+            } else {
+                networks.forEach(network => {
+                    content += `
+                        <tr>
+                            <td><span class="vlan-badge">${network.vlan}</span></td>
+                            <td>${network.ip_range}</td>
+                            <td>${network.subnet_mask}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-info"
+                                        onclick="window.location.href='/networks/#${network.id}'">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            content += `</tbody></table></div>`;
+
+            $('#equipment-networks-content').html(content);
+            $('#equipmentNetworksModal').modal('show');
+        })
+        .fail(function(xhr) {
+            showAlert(`Ошибка загрузки сетей: ${xhr.responseJSON?.detail || 'Неизвестная ошибка'}`, 'danger');
+        })
+        .always(function() {
+            hideLoadingModal();
+        });
+}
+
+function resetFilters() {
+    $('#typeFilter').val('');
+    $('#minPorts').val('');
+    $('#bandwidthFilter').val('');
+    $('#dateFrom').val('');
+    $('#dateTo').val('');
+    $('#searchFilter').val('');
+    loadAllEquipment();
+}
+
+function refreshTable() {
+    applyFilters();
+}
+
+function refreshEquipment(id) {
+    $.get(`/api/equipment/${id}/`)
+        .done(function() {
+            showAlert('Данные оборудования обновлены', 'success');
+            loadAllEquipment();
+        })
+        .fail(function(xhr) {
+            showAlert('Ошибка обновления', 'danger');
+        });
+}
+
+function refreshAllEquipment() {
+    loadAllEquipment();
+    showAlert('Все данные оборудования обновлены', 'success');
+}
+
+function exportEquipment() {
+    const params = new URLSearchParams();
+    const type = $('#typeFilter').val();
+    const minPorts = $('#minPorts').val();
+
+    if (type) params.append('type', type);
+    if (minPorts) params.append('min_ports', minPorts);
+
+    const url = `/api/equipment/export/?${params.toString()}`;
+    window.open(url, '_blank');
+}
+
+function printEquipmentDetails() {
+    const printContent = $('#equipment-detail-content').html();
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Детали оборудования</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                <style>
+                    body { padding: 20px; }
+                    @media print {
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${printContent}
+                <div class="no-print text-center mt-4">
+                    <button onclick="window.print()" class="btn btn-primary">Печать</button>
+                    <button onclick="window.close()" class="btn btn-secondary">Закрыть</button>
+                </div>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+function showLoading(show) {
+    $('#loading-row').toggle(show);
+    if (show) {
+        $('#equipment-body').children().not('#loading-row').hide();
+    } else {
+        $('#equipment-body').children().not('#loading-row').show();
+    }
+}
+
+function showLoadingModal() {
+    $('#equipment-detail-content').html(`
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+            <p class="mt-2 text-muted">Загрузка данных...</p>
+        </div>
+    `);
+}
+
+function hideLoadingModal() {
+    // Автоматически скрывается при загрузке данных
+}
+
+function showAlert(message, type) {
+    const alert = $(`
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `);
+
+    $('.alert-dismissible').remove();
+    $('.container-fluid').prepend(alert);
+
+    setTimeout(() => {
+        alert.alert('close');
+    }, 5000);
+}
+</script>
+{% endblock %}

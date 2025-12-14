@@ -1,0 +1,320 @@
+<!-- templates/database_backup.html -->
+{% extends 'base.html' %}
+
+{% block title %}Резервное копирование - Локальная компьютерная сеть{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h1><i class="bi bi-database-gear"></i> Резервное копирование базы данных</h1>
+                <p class="lead">Создание резервных копий и восстановление базы данных</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Создание резервной копии -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-database-down"></i> Создание резервной копии
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <p>Создайте полную резервную копию базы данных в формате SQL.</p>
+                            <div class="mb-3">
+                                <label for="backupFileName" class="form-label">Имя файла (опционально):</label>
+                                <input type="text" class="form-control" id="backupFileName" placeholder="backup_2024">
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button class="btn btn-success btn-lg" onclick="createBackup()">
+                                <i class="bi bi-download"></i> Создать резервную копию
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Восстановление из резервной копии -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-database-up"></i> Восстановление из резервной копии
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Внимание!</strong> Восстановление из резервной копии перезапишет текущие данные.
+                        Убедитесь, что у вас есть актуальная резервная копия.
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="backupFile" class="form-label">Выберите файл резервной копии:</label>
+                                <input type="file" class="form-control" id="backupFile" accept=".sql,.backup,.dump">
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button class="btn btn-warning btn-lg" onclick="restoreBackup()">
+                                <i class="bi bi-upload"></i> Восстановить из копии
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- История резервных копий -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history"></i> История резервных копий
+                    </h5>
+                    <button class="btn btn-sm btn-primary" onclick="loadBackupHistory()">
+                        <i class="bi bi-arrow-clockwise"></i> Обновить
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="backupHistoryTable" class="table table-striped table-hover" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Имя файла</th>
+                                    <th>Размер</th>
+                                    <th>Дата создания</th>
+                                    <th>Статус</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="backup-history-body">
+                                <tr>
+                                    <td colspan="5" class="text-center">Загрузка данных...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения восстановления -->
+<div class="modal fade" id="restoreConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение восстановления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <strong>Внимание! Это действие нельзя отменить.</strong><br>
+                    Все текущие данные будут удалены и заменены данными из резервной копии.
+                </div>
+                <p>Вы уверены, что хотите продолжить?</p>
+                <p><strong>Файл:</strong> <span id="confirmFileName"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" onclick="confirmRestore()">Да, восстановить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let dataTable = null;
+
+$(document).ready(function() {
+    loadBackupHistory();
+});
+
+function initializeDataTable() {
+    if (dataTable) {
+        dataTable.destroy();
+    }
+
+    dataTable = $('#backupHistoryTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/ru.json'
+        },
+        pageLength: 10,
+        order: [[2, 'desc']], // Сортировка по дате создания (новые сверху)
+        columnDefs: [
+            { orderable: false, targets: 4 } // Отключаем сортировку для действий
+        ]
+    });
+}
+
+function loadBackupHistory() {
+    // В реальном приложении здесь будет AJAX запрос к API
+    // Покажем демо-данные
+    const demoData = [
+        {
+            filename: 'backup_20241129_1430.sql',
+            size: '2.4 MB',
+            created: '2024-11-29 14:30:25',
+            status: 'Успешно'
+        },
+        {
+            filename: 'backup_20241128_0900.sql',
+            size: '2.3 MB',
+            created: '2024-11-28 09:00:15',
+            status: 'Успешно'
+        },
+        {
+            filename: 'backup_20241127_1800.sql',
+            size: '2.2 MB',
+            created: '2024-11-27 18:00:45',
+            status: 'Успешно'
+        }
+    ];
+
+    renderBackupHistory(demoData);
+}
+
+function renderBackupHistory(backups) {
+    const tbody = $('#backup-history-body');
+    tbody.empty();
+
+    if (backups.length === 0) {
+        tbody.append(`
+            <tr>
+                <td colspan="5" class="text-center text-muted">Нет данных о резервных копиях</td>
+            </tr>
+        `);
+    } else {
+        backups.forEach(backup => {
+            tbody.append(`
+                <tr>
+                    <td>${backup.filename}</td>
+                    <td>${backup.size}</td>
+                    <td>${backup.created}</td>
+                    <td>
+                        <span class="badge bg-success">${backup.status}</span>
+                    </td>
+                    <td class="table-actions">
+                        <button class="btn btn-sm btn-outline-primary" onclick="downloadBackup('${backup.filename}')">
+                            <i class="bi bi-download"></i> Скачать
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="prepareRestore('${backup.filename}')">
+                            <i class="bi bi-arrow-clockwise"></i> Восстановить
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteBackup('${backup.filename}')">
+                            <i class="bi bi-trash"></i> Удалить
+                        </button>
+                    </td>
+                </tr>
+            `);
+        });
+    }
+
+    initializeDataTable();
+}
+
+function createBackup() {
+    const fileName = $('#backupFileName').val() || `backup_${new Date().toISOString().slice(0,10)}`;
+
+    showLoading('Создание резервной копии...');
+
+    // В реальном приложении здесь будет AJAX запрос
+    setTimeout(() => {
+        showAlert('Резервная копия успешно создана!', 'success');
+        loadBackupHistory();
+    }, 2000);
+}
+
+function restoreBackup() {
+    const fileInput = document.getElementById('backupFile');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        showAlert('Пожалуйста, выберите файл резервной копии', 'warning');
+        return;
+    }
+
+    if (!file.name.toLowerCase().endsWith('.sql')) {
+        showAlert('Пожалуйста, выберите файл в формате SQL', 'warning');
+        return;
+    }
+
+    $('#confirmFileName').text(file.name);
+    $('#restoreConfirmModal').modal('show');
+}
+
+function prepareRestore(filename) {
+    $('#confirmFileName').text(filename);
+    $('#restoreConfirmModal').modal('show');
+}
+
+function confirmRestore() {
+    $('#restoreConfirmModal').modal('hide');
+    showLoading('Восстановление из резервной копии...');
+
+    // В реальном приложении здесь будет AJAX запрос
+    setTimeout(() => {
+        showAlert('База данных успешно восстановлена из резервной копии!', 'success');
+        loadBackupHistory();
+    }, 3000);
+}
+
+function downloadBackup(filename) {
+    showLoading('Подготовка файла для скачивания...');
+
+    // В реальном приложении здесь будет AJAX запрос для скачивания
+    setTimeout(() => {
+        showAlert(`Файл ${filename} готов к скачиванию`, 'info');
+        // Здесь будет логика скачивания файла
+    }, 1000);
+}
+
+function deleteBackup(filename) {
+    if (confirm(`Вы уверены, что хотите удалить резервную копию "${filename}"?`)) {
+        showLoading('Удаление резервной копии...');
+
+        // В реальном приложении здесь будет AJAX запрос
+        setTimeout(() => {
+            showAlert('Резервная копия успешно удалена', 'success');
+            loadBackupHistory();
+        }, 1000);
+    }
+}
+
+function showLoading(message) {
+    // Простая реализация показа загрузки
+    console.log(message);
+}
+
+function showAlert(message, type) {
+    const alert = $(`
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `);
+    $('.container-fluid').prepend(alert);
+    setTimeout(() => alert.alert('close'), 5000);
+}
+</script>
+{% endblock %}

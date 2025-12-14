@@ -1,6 +1,8 @@
 from rest_framework import serializers
-from .models import Department, Computer, User, Software, Network, NetworkComputer, Equipment
-
+from .models import (
+    Department, Computer, User, Software, Network, NetworkComputer,
+    Equipment, HostComputer, Server, SoftwareComputer, UserComputer, ServerNetwork
+)
 
 class DepartmentSerializer(serializers.ModelSerializer):
     computers_count = serializers.SerializerMethodField()
@@ -8,10 +10,20 @@ class DepartmentSerializer(serializers.ModelSerializer):
     is_large_department = serializers.SerializerMethodField()
 
     host_computer_ip = serializers.CharField(
-        source='host_computer.ip_address',
+        source='hostcomputer.ip_address',
         read_only=True,
         allow_null=True
     )
+
+    employee_phones = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        allow_empty=True,
+        default=list
+    )
+
+    # Для nested отображения
+    hostcomputer = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Department
@@ -19,25 +31,32 @@ class DepartmentSerializer(serializers.ModelSerializer):
             'id', 'room_number', 'internal_phone',
             'employee_count', 'employee_phones',
             'computers_count', 'avg_computers_per_employee',
-            'is_large_department', 'host_computer_ip'
+            'is_large_department', 'host_computer_ip', 'hostcomputer'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'computers_count', 'avg_computers_per_employee',
+                            'is_large_department', 'host_computer_ip']
+        extra_kwargs = {
+            'hostcomputer': {'required': False, 'allow_null': True}
+        }
 
     def get_computers_count(self, obj):
-        return obj.computers.count()
+        if hasattr(obj, 'computers_count'):
+            return obj.computers_count
+        return obj.computers.count() if hasattr(obj, 'computers') else 0
 
     def get_avg_computers_per_employee(self, obj):
+        computers_count = self.get_computers_count(obj)
         if obj.employee_count > 0:
-            return round(obj.computers.count() / obj.employee_count, 2)
+            return round(computers_count / obj.employee_count, 2)
         return 0
 
     def get_is_large_department(self, obj):
         return obj.employee_count > 10
 
     def validate_room_number(self, value):
-        if value < 1 or value > 99:
+        if value < 100 or value > 599:
             raise serializers.ValidationError(
-                "Номер комнаты должен быть от 1 до 9"
+                "Номер комнаты должен быть от 100 до 599"
             )
         return value
 
@@ -52,6 +71,21 @@ class DepartmentSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_employee_phones(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("employee_phones должен быть списком")
+
+        for phone in value:
+            if not isinstance(phone, int):
+                raise serializers.ValidationError(
+                    f"Телефон '{phone}' должен быть числом"
+                )
+            if phone <= 0:
+                raise serializers.ValidationError(
+                    f"Телефон '{phone}' должен быть положительным числом"
+                )
+        return value
+
     def validate(self, attrs):
         room_number = attrs.get('room_number')
         employee_count = attrs.get('employee_count', 0)
@@ -60,31 +94,9 @@ class DepartmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'room_number': 'Крупные отделы размещаются в комнатах 50+'
             })
-
         return attrs
 
-    def create(self, validated_data):
-        print(f"Создается отдел в комнате {validated_data['room_number']}")
-
-        if 'employee_phones' not in validated_data:
-            validated_data['employee_phones'] = []
-
-        return super().create(validated_data)
-
-    def update(self, instance, validated_data):
-        old_room = instance.room_number
-        old_employee_count = instance.employee_count
-
-        instance = super().update(instance, validated_data)
-
-        if old_room != instance.room_number:
-            print(f"Отдел {instance.id} перемещен из {old_room} в {instance.room_number}")
-
-        return instance
-
-
 class ComputerSerializer(serializers.ModelSerializer):
-
     department_info = serializers.SerializerMethodField()
     users_count = serializers.SerializerMethodField()
     software_list = serializers.SerializerMethodField()
@@ -97,6 +109,8 @@ class ComputerSerializer(serializers.ModelSerializer):
             'inventory_number', 'department', 'department_info',
             'users_count', 'software_list', 'network_speed'
         ]
+        read_only_fields = ['department_info', 'users_count',
+                            'software_list', 'network_speed']
 
     def get_department_info(self, obj):
         if obj.department:
@@ -104,14 +118,18 @@ class ComputerSerializer(serializers.ModelSerializer):
         return "Не назначен"
 
     def get_users_count(self, obj):
-        return obj.users.count()
+        return obj.users.count() if hasattr(obj, 'users') else 0
 
     def get_software_list(self, obj):
-        return list(obj.software.values_list('name', flat=True))
+        if hasattr(obj, 'software'):
+            return list(obj.software.values_list('name', flat=True))
+        return []
 
     def get_network_speed(self, obj):
-        network_conn = obj.network_computer_set.first()
-        return network_conn.speed if network_conn else 0
+        if hasattr(obj, 'networkcomputer_set'):
+            network_conn = obj.networkcomputer_set.first()
+            return network_conn.speed if network_conn else 0
+        return 0
 
     def validate_serial_number(self, value):
         instance = self.instance
@@ -126,25 +144,8 @@ class ComputerSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Компьютер с таким серийным номером уже существует")
         return value
 
-    def create(self, validated_data):
-        computer = super().create(validated_data)
-
-        from .models import NetworkComputer, Network
-        default_network = Network.objects.first()
-        if default_network:
-            NetworkComputer.objects.create(
-                network=default_network,
-                computer=computer,
-                ip_address='192.168.1.100',
-                mac_address='00:00:00:00:00:00',
-                speed=100
-            )
-
-        return computer
-
 
 class UserSerializer(serializers.ModelSerializer):
-
     department_room = serializers.CharField(
         source='department.room_number',
         read_only=True
@@ -159,16 +160,19 @@ class UserSerializer(serializers.ModelSerializer):
             'position_id', 'department', 'department_room',
             'computers_info', 'can_manage_network'
         ]
+        read_only_fields = ['department_room', 'computers_info', 'can_manage_network']
 
     def get_computers_info(self, obj):
-        computers = obj.computers.all()
-        return [
-            {
-                'id': comp.id,
-                'model': comp.model,
-                'os': comp.os
-            } for comp in computers
-        ]
+        if hasattr(obj, 'computers'):
+            computers = obj.computers.all()
+            return [
+                {
+                    'id': comp.id,
+                    'model': comp.model,
+                    'os': comp.os
+                } for comp in computers
+            ]
+        return []
 
     def get_can_manage_network(self, obj):
         return obj.position_id in [1, 2]
@@ -188,7 +192,6 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'department': 'Руководители должны быть привязаны к отделу'
             })
-
         return attrs
 
 
@@ -203,39 +206,39 @@ class SoftwareSerializer(serializers.ModelSerializer):
             'id', 'name', 'version', 'license', 'vendor',
             'installed_count', 'popular_os', 'needs_license_renewal'
         ]
+        read_only_fields = ['installed_count', 'popular_os', 'needs_license_renewal']
 
     def get_installed_count(self, obj):
-        return obj.computers.count()
+        return obj.computers.count() if hasattr(obj, 'computers') else 0
 
     def get_popular_os(self, obj):
-        os_list = obj.computers.values_list('os', flat=True).distinct()
-        return list(os_list)
+        if hasattr(obj, 'computers'):
+            os_list = obj.computers.values_list('os', flat=True).distinct()
+            return list(os_list)
+        return []
 
     def get_needs_license_renewal(self, obj):
         return 'trial' in obj.license.lower() or 'expired' in obj.license.lower()
 
-    def create(self, validated_data):
-        if 'version' not in validated_data:
-            validated_data['version'] = '1.0.0'
-
-        software = super().create(validated_data)
-        print(f"Добавлено ПО: {software.name} {software.version}")
-
-        return software
 
 class NetworkComputerSerializer(serializers.ModelSerializer):
-    computer_model = serializers.CharField(
-        source='computer.model',
-        read_only=True
-    )
+    computer_model = serializers.CharField(source='computer.model', read_only=True)
+    network_vlan = serializers.IntegerField(source='network.vlan', read_only=True)
 
     class Meta:
         model = NetworkComputer
-        fields = ['computer_model']
+        fields = ['id', 'network', 'computer', 'ip_address', 'mac_address',
+                  'speed', 'computer_model', 'network_vlan']
+        read_only_fields = ['computer_model', 'network_vlan']
+
 
 class NetworkSerializer(serializers.ModelSerializer):
-    port_count_eq = serializers.CharField(
+    equipment_port_count = serializers.IntegerField(
         source='equipment.port_count',
+        read_only=True
+    )
+    equipment_type = serializers.CharField(
+        source='equipment.type',
         read_only=True
     )
 
@@ -248,17 +251,23 @@ class NetworkSerializer(serializers.ModelSerializer):
     class Meta:
         model = Network
         fields = [
-            'id', 'subnet_mask', 'vlan',
-            'ip_range', 'port_count_eq', 'network_computers'
+            'id', 'subnet_mask', 'vlan', 'ip_range',
+            'equipment', 'equipment_port_count', 'equipment_type',
+            'network_computers'
         ]
+        read_only_fields = ['equipment_port_count', 'equipment_type', 'network_computers']
+        extra_kwargs = {
+            'equipment': {'required': True}
+        }
+
 
 class EquipmentSerializer(serializers.ModelSerializer):
-
     type_of_bandwidth = serializers.SerializerMethodField()
 
     class Meta:
         model = Equipment
         fields = ['id', 'type', 'bandwidth', 'port_count', 'setup_date', 'type_of_bandwidth']
+        read_only_fields = ['type_of_bandwidth']
 
     def get_type_of_bandwidth(self, obj):
         if obj.bandwidth == 100:
@@ -267,3 +276,61 @@ class EquipmentSerializer(serializers.ModelSerializer):
             return 'Онлайн-игры'
         else:
             return 'Видеозвонки'
+
+
+class HostComputerSerializer(serializers.ModelSerializer):
+    department_room = serializers.CharField(
+        source='department.room_number',
+        read_only=True
+    )
+
+    class Meta:
+        model = HostComputer
+        fields = ['id', 'hostname', 'ip_address', 'mac_address',
+                  'department', 'department_room']
+        read_only_fields = ['department_room']
+
+
+class ServerSerializer(serializers.ModelSerializer):
+    networks_info = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Server
+        fields = ['id', 'port', 'hostname', 'connection_date',
+                  'location', 'networks_info']
+        read_only_fields = ['networks_info']
+
+    def get_networks_info(self, obj):
+        if hasattr(obj, 'networks'):
+            return list(obj.networks.values_list('vlan', flat=True))
+        return []
+
+
+class SoftwareComputerSerializer(serializers.ModelSerializer):
+    software_name = serializers.CharField(source='software.name', read_only=True)
+    computer_model = serializers.CharField(source='computer.model', read_only=True)
+
+    class Meta:
+        model = SoftwareComputer
+        fields = ['id', 'software', 'computer', 'software_name', 'computer_model']
+        read_only_fields = ['software_name', 'computer_model']
+
+
+class UserComputerSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.full_name', read_only=True)
+    computer_model = serializers.CharField(source='computer.model', read_only=True)
+
+    class Meta:
+        model = UserComputer
+        fields = ['id', 'user', 'computer', 'user_name', 'computer_model']
+        read_only_fields = ['user_name', 'computer_model']
+
+
+class ServerNetworkSerializer(serializers.ModelSerializer):
+    server_hostname = serializers.CharField(source='server.hostname', read_only=True)
+    network_vlan = serializers.IntegerField(source='network.vlan', read_only=True)
+
+    class Meta:
+        model = ServerNetwork
+        fields = ['id', 'server', 'network', 'server_hostname', 'network_vlan']
+        read_only_fields = ['server_hostname', 'network_vlan']

@@ -1,0 +1,602 @@
+<!-- templates/sql_query.html -->
+{% extends 'base.html' %}
+
+{% block title %}SQL Запросы - Локальная компьютерная сеть{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h1><i class="bi bi-code-slash"></i> SQL Запросы</h1>
+                <p class="lead">Выполнение произвольных SQL запросов к базе данных</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Редактор запросов -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-pencil-square"></i> Редактор SQL запросов
+                    </h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-info" onclick="showTables()">
+                            <i class="bi bi-list-ul"></i> Показать таблицы
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="sqlQuery" class="form-label">SQL запрос:</label>
+                        <textarea class="form-control" id="sqlQuery" rows="8" placeholder="Введите ваш SQL запрос здесь...
+Например: SELECT * FROM &quot;LocalComputerNetwork&quot;.&quot;Computer&quot; LIMIT 10;"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Быстрые запросы:</label>
+                                <div class="btn-group-vertical w-100" role="group">
+                                    <button type="button" class="btn btn-outline-secondary text-start" onclick="loadQuickQuery('computers')">
+                                        <i class="bi bi-pc"></i> Показать все компьютеры
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary text-start" onclick="loadQuickQuery('users')">
+                                        <i class="bi bi-people"></i> Показать всех пользователей
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary text-start" onclick="loadQuickQuery('departments')">
+                                        <i class="bi bi-building"></i> Показать все отделы
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary text-start" onclick="loadQuickQuery('networks')">
+                                        <i class="bi bi-diagram-3"></i> Показать все сети
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary text-start" onclick="loadQuickQuery('tables')">
+                                        <i class="bi bi-list-ul"></i> Показать все таблицы
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Действия:</label>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-primary" onclick="executeQuery()">
+                                        <i class="bi bi-play-circle"></i> Выполнить запрос
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="clearQuery()">
+                                        <i class="bi bi-eraser"></i> Очистить
+                                    </button>
+                                    <button class="btn btn-outline-info" onclick="explainQuery()">
+                                        <i class="bi bi-info-circle"></i> EXPLAIN запрос
+                                    </button>
+                                    <button class="btn btn-outline-success" onclick="formatQuery()">
+                                        <i class="bi bi-code-square"></i> Форматировать
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Результаты запроса -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-table"></i> Результаты запроса
+                    </h5>
+                    <div>
+                        <span class="badge bg-secondary me-2" id="rowCount">0 строк</span>
+                        <span class="badge bg-secondary me-2" id="queryTime">0.00s</span>
+                        <button class="btn btn-sm btn-success" onclick="exportResults()" id="exportBtn" style="display: none;">
+                            <i class="bi bi-download"></i> Экспорт
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="query-results">
+                        <p class="text-muted text-center">Результаты запроса появятся здесь</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- История запросов -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history"></i> История запросов
+                    </h5>
+                    <button class="btn btn-sm btn-primary" onclick="loadQueryHistory()">
+                        <i class="bi bi-arrow-clockwise"></i> Обновить
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="queryHistoryTable" class="table table-striped table-hover" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Запрос</th>
+                                    <th>Тип</th>
+                                    <th>Результат</th>
+                                    <th>Дата</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="query-history-body">
+                                <tr>
+                                    <td colspan="5" class="text-center">История запросов будет сохраняться здесь</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение операции</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Внимание!</strong>
+                    <span id="confirmMessage">Этот запрос может изменить данные.</span>
+                </div>
+                <pre id="confirmQuery" class="p-2 bg-light border rounded"></pre>
+                <p>Вы уверены, что хотите выполнить этот запрос?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" onclick="confirmExecution()">Выполнить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для просмотра таблиц -->
+<div class="modal fade" id="tablesModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Таблицы базы данных</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="tables-list">
+                    <!-- Список таблиц загружается здесь -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let dataTable = null;
+let currentResults = [];
+let currentQuery = '';
+let queryHistory = JSON.parse(localStorage.getItem('sqlQueryHistory') || '[]');
+
+$(document).ready(function() {
+    loadQueryHistory();
+});
+
+function initializeDataTable() {
+    if (dataTable) {
+        dataTable.destroy();
+    }
+
+    dataTable = $('#queryHistoryTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/ru.json'
+        },
+        pageLength: 10,
+        order: [[3, 'desc']],
+        columnDefs: [
+            {
+                orderable: false,
+                targets: [0, 4]
+            },
+            {
+                targets: 0,
+                render: function(data, type, row) {
+                    if (type === 'display') {
+                        return data.length > 80 ? data.substr(0, 80) + '...' : data;
+                    }
+                    return data;
+                }
+            }
+        ]
+    });
+}
+
+function loadQuickQuery(type) {
+    const queries = {
+        computers: 'SELECT * FROM "LocalComputerNetwork"."Computer" LIMIT 50',
+        users: 'SELECT * FROM "LocalComputerNetwork"."User" LIMIT 50',
+        departments: 'SELECT * FROM "LocalComputerNetwork"."Department" LIMIT 50',
+        networks: 'SELECT * FROM "LocalComputerNetwork"."Network" LIMIT 50',
+        tables: `SELECT
+                    table_schema as schema,
+                    table_name as name,
+                    table_type as type
+                 FROM information_schema.tables
+                 WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
+                 ORDER BY table_schema, table_name`
+    };
+
+    $('#sqlQuery').val(queries[type]);
+}
+
+function clearQuery() {
+    $('#sqlQuery').val('');
+    $('#query-results').html('<p class="text-muted text-center">Результаты запроса появятся здесь</p>');
+    $('#rowCount').text('0 строк').removeClass('bg-success bg-warning').addClass('bg-secondary');
+    $('#queryTime').text('0.00s').removeClass('bg-success').addClass('bg-secondary');
+    $('#exportBtn').hide();
+}
+
+function executeQuery() {
+    const query = $('#sqlQuery').val().trim();
+
+    if (!query) {
+        showAlert('Пожалуйста, введите SQL запрос', 'warning');
+        return;
+    }
+
+    currentQuery = query;
+    const startTime = performance.now();
+
+    showLoading('Выполнение запроса...');
+
+    // Отправляем запрос на сервер
+    $.ajax({
+        url: '/api/database/execute_sql/',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ query: query }),
+        success: function(response) {
+            const endTime = performance.now();
+            const executionTime = ((endTime - startTime) / 1000).toFixed(2);
+
+            if (response.status === 'warning' && response.requires_confirmation) {
+                // Показываем модальное окно подтверждения для опасных операций
+                $('#confirmMessage').text('Этот запрос может изменить или удалить данные.');
+                $('#confirmQuery').text(query);
+                $('#confirmModal').modal('show');
+                return;
+            }
+
+            if (response.status === 'success') {
+                displayResults(response, executionTime);
+                addToHistory(query, response, executionTime);
+            } else {
+                displayError(response.message, executionTime);
+            }
+        },
+        error: function(xhr) {
+            const endTime = performance.now();
+            const executionTime = ((endTime - startTime) / 1000).toFixed(2);
+
+            let errorMsg = 'Ошибка при выполнении запроса';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                errorMsg = response.message || errorMsg;
+            } catch (e) {
+                errorMsg = xhr.statusText || errorMsg;
+            }
+
+            displayError(errorMsg, executionTime);
+        }
+    });
+}
+
+function confirmExecution() {
+    $('#confirmModal').modal('hide');
+    const startTime = performance.now();
+
+    showLoading('Выполнение запроса...');
+
+    $.ajax({
+        url: '/api/database/execute_sql/',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            query: currentQuery,
+            confirmed: true
+        }),
+        success: function(response) {
+            const endTime = performance.now();
+            const executionTime = ((endTime - startTime) / 1000).toFixed(2);
+
+            if (response.status === 'success') {
+                displayResults(response, executionTime);
+                addToHistory(currentQuery, response, executionTime);
+            } else {
+                displayError(response.message, executionTime);
+            }
+        },
+        error: function(xhr) {
+            const endTime = performance.now();
+            const executionTime = ((endTime - startTime) / 1000).toFixed(2);
+            displayError('Ошибка при выполнении запроса', executionTime);
+        }
+    });
+}
+
+function explainQuery() {
+    const query = $('#sqlQuery').val().trim();
+
+    if (!query) {
+        showAlert('Пожалуйста, введите SQL запрос', 'warning');
+        return;
+    }
+
+    const explainQuery = `EXPLAIN ANALYZE ${query}`;
+    $('#sqlQuery').val(explainQuery);
+    executeQuery();
+}
+
+function formatQuery() {
+    const query = $('#sqlQuery').val();
+    // Простое форматирование - в реальном приложении можно использовать библиотеку
+    const formatted = query
+        .replace(/SELECT/gi, '\nSELECT')
+        .replace(/FROM/gi, '\nFROM')
+        .replace(/WHERE/gi, '\nWHERE')
+        .replace(/ORDER BY/gi, '\nORDER BY')
+        .replace(/GROUP BY/gi, '\nGROUP BY')
+        .replace(/JOIN/gi, '\nJOIN')
+        .replace(/LEFT/gi, '\nLEFT')
+        .replace(/INNER/gi, '\nINNER');
+
+    $('#sqlQuery').val(formatted.trim());
+}
+
+function displayResults(response, executionTime) {
+    const resultsDiv = $('#query-results');
+
+    if (response.type === 'query' && response.results && response.results.length > 0) {
+        currentResults = response.results;
+
+        // Создаем таблицу с результатами
+        let html = '<div class="table-responsive"><table class="table table-striped table-bordered table-sm"><thead><tr>';
+
+        // Заголовки столбцов
+        response.columns.forEach(column => {
+            html += `<th>${column}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+
+        // Данные
+        response.results.forEach(row => {
+            html += '<tr>';
+            response.columns.forEach(column => {
+                const value = row[column];
+                html += `<td>${value !== null && value !== undefined ? value : '<span class="text-muted">NULL</span>'}</td>`;
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        resultsDiv.html(html);
+
+        $('#rowCount').text(`${response.row_count} строк`).removeClass('bg-secondary').addClass('bg-success');
+        $('#exportBtn').show();
+
+    } else if (response.type === 'command') {
+        resultsDiv.html(`
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle"></i>
+                <strong>Успех!</strong> ${response.message}
+                ${response.affected_rows ? `<br>Затронуто строк: ${response.affected_rows}` : ''}
+            </div>
+        `);
+        $('#rowCount').text(`${response.affected_rows || 0} строк`).removeClass('bg-secondary').addClass('bg-warning');
+        $('#exportBtn').hide();
+
+    } else {
+        resultsDiv.html('<p class="text-muted text-center">Запрос выполнен успешно. Нет данных для отображения.</p>');
+        $('#rowCount').text('0 строк').removeClass('bg-success bg-warning').addClass('bg-secondary');
+        $('#exportBtn').hide();
+    }
+
+    $('#queryTime').text(`${executionTime}s`).removeClass('bg-secondary').addClass('bg-success');
+}
+
+function displayError(message, executionTime) {
+    $('#query-results').html(`
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i>
+            <strong>Ошибка!</strong> ${message}
+        </div>
+    `);
+    $('#rowCount').text('Ошибка').removeClass('bg-success bg-secondary').addClass('bg-danger');
+    $('#queryTime').text(`${executionTime}s`).removeClass('bg-success').addClass('bg-danger');
+    $('#exportBtn').hide();
+}
+
+function exportResults() {
+    if (currentResults.length === 0) {
+        showAlert('Нет данных для экспорта', 'warning');
+        return;
+    }
+
+    showLoading('Подготовка данных для экспорта...');
+
+    // Отправляем запрос на экспорт
+    $.ajax({
+        url: '/api/database/export_sql_results/',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ query: currentQuery }),
+        xhrFields: {
+            responseType: 'blob'
+        },
+        success: function(blob) {
+            // Создаем ссылку для скачивания
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sql_results.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            showAlert('Файл успешно экспортирован', 'success');
+        },
+        error: function(xhr) {
+            showAlert('Ошибка при экспорте данных', 'danger');
+        }
+    });
+}
+
+function showTables() {
+    showLoading('Загрузка списка таблиц...', 'tables-list');
+
+    $.get('/api/database/get_tables/', function(response) {
+        if (response.status === 'success') {
+            let html = '<div class="row">';
+
+            response.tables.forEach(table => {
+                html += `
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">${table.full_name}</h6>
+                                <p class="card-text small text-muted">
+                                    Схема: ${table.schema}<br>
+                                    Таблица: ${table.name}
+                                </p>
+                                <button class="btn btn-sm btn-outline-primary" onclick="showTableStructure('${table.name}')">
+                                    <i class="bi bi-info-circle"></i> Структура
+                                </button>
+                                <button class="btn btn-sm btn-outline-success" onclick="useTable('${table.full_name}')">
+                                    <i class="bi bi-play-circle"></i> Выбрать
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            $('#tables-list').html(html);
+            $('#tablesModal').modal('show');
+        } else {
+            $('#tables-list').html(`<div class="alert alert-danger">${response.message}</div>`);
+        }
+    });
+}
+
+function useTable(tableName) {
+    $('#sqlQuery').val(`SELECT * FROM ${tableName} LIMIT 50`);
+    $('#tablesModal').modal('hide');
+}
+
+function showTableStructure(tableName) {
+    // Реализация показа структуры таблицы
+    alert(`Структура таблицы ${tableName} будет показана здесь`);
+}
+
+function addToHistory(query, response, executionTime) {
+    const historyItem = {
+        query: query,
+        type: response.type || 'unknown',
+        result: response.message || `Возвращено ${response.row_count || 0} строк`,
+        timestamp: new Date().toISOString(),
+        executionTime: executionTime
+    };
+
+    queryHistory.unshift(historyItem);
+    // Сохраняем только последние 50 запросов
+    queryHistory = queryHistory.slice(0, 50);
+    localStorage.setItem('sqlQueryHistory', JSON.stringify(queryHistory));
+
+    loadQueryHistory();
+}
+
+function loadQueryHistory() {
+    renderQueryHistory(queryHistory);
+}
+
+function renderQueryHistory(history) {
+    const tbody = $('#query-history-body');
+    tbody.empty();
+
+    if (history.length === 0) {
+        tbody.append(`
+            <tr>
+                <td colspan="5" class="text-center text-muted">История запросов пуста</td>
+            </tr>
+        `);
+    } else {
+        history.forEach(item => {
+            const date = new Date(item.timestamp).toLocaleString('ru-RU');
+            tbody.append(`
+                <tr>
+                    <td title="${item.query}">${item.query.length > 80 ? item.query.substr(0, 80) + '...' : item.query}</td>
+                    <td><span class="badge bg-info">${item.type}</span></td>
+                    <td>${item.result}</td>
+                    <td>${date}</td>
+                    <td class="table-actions">
+                        <button class="btn btn-sm btn-outline-primary" onclick="reuseQuery('${item.query.replace(/'/g, "\\'")}')">
+                            <i class="bi bi-play-circle"></i>
+                        </button>
+                    </td>
+                </tr>
+            `);
+        });
+    }
+
+    initializeDataTable();
+}
+
+function reuseQuery(query) {
+    $('#sqlQuery').val(query);
+}
+
+function showLoading(message, elementId = 'query-results') {
+    $(`#${elementId}`).html(`
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+            <p class="mt-2">${message}</p>
+        </div>
+    `);
+}
+
+function showAlert(message, type) {
+    const alert = $(`
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `);
+    $('.container-fluid').prepend(alert);
+    setTimeout(() => alert.alert('close'), 5000);
+}
+</script>
+{% endblock %}

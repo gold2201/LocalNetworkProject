@@ -1,0 +1,318 @@
+<!-- templates/reports.html -->
+{% extends 'base.html' %}
+
+{% block title %}Отчеты - Локальная компьютерная сеть{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h1><i class="bi bi-file-earmark-bar-graph"></i> Отчеты</h1>
+                <p class="lead">Генерация и просмотр отчетов по системе</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Карточки отчетов -->
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="bi bi-pc-display fs-1 text-primary mb-3"></i>
+                    <h5 class="card-title">Отчет по компьютерам</h5>
+                    <p class="card-text">Статистика по компьютерам, ОС и отделам</p>
+                    <button class="btn btn-primary" onclick="generateComputerReport()">
+                        <i class="bi bi-file-earmark-text"></i> Сгенерировать
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="bi bi-people fs-1 text-success mb-3"></i>
+                    <h5 class="card-title">Отчет по пользователям</h5>
+                    <p class="card-text">Распределение пользователей по отделам и ролям</p>
+                    <button class="btn btn-success" onclick="generateUserReport()">
+                        <i class="bi bi-file-earmark-text"></i> Сгенерировать
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="bi bi-motherboard fs-1 text-warning mb-3"></i>
+                    <h5 class="card-title">Отчет по ПО</h5>
+                    <p class="card-text">Установленное ПО и лицензии</p>
+                    <button class="btn btn-warning" onclick="generateSoftwareReport()">
+                        <i class="bi bi-file-earmark-text"></i> Сгенерировать
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Дополнительные отчеты -->
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="bi bi-diagram-3 fs-1 text-info mb-3"></i>
+                    <h5 class="card-title">Сетевой отчет</h5>
+                    <p class="card-text">Использование сетей и оборудование</p>
+                    <button class="btn btn-info" onclick="generateNetworkReport()">
+                        <i class="bi bi-file-earmark-text"></i> Сгенерировать
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="bi bi-building fs-1 text-secondary mb-3"></i>
+                    <h5 class="card-title">Отчет по отделам</h5>
+                    <p class="card-text">Статистика по отделам и оснащению</p>
+                    <button class="btn btn-secondary" onclick="generateDepartmentReport()">
+                        <i class="bi bi-file-earmark-text"></i> Сгенерировать
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <i class="bi bi-collection fs-1 text-danger mb-3"></i>
+                    <h5 class="card-title">Комплексный отчет</h5>
+                    <p class="card-text">Полный отчет по всей системе</p>
+                    <button class="btn btn-danger" onclick="generateComprehensiveReport()">
+                        <i class="bi bi-file-earmark-text"></i> Сгенерировать
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Результаты отчетов -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Результаты отчетов</h5>
+                </div>
+                <div class="card-body">
+                    <div id="report-results">
+                        <p class="text-muted text-center">Выберите отчет для генерации</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function generateComputerReport() {
+    showLoading('Генерация отчета по компьютерам...');
+
+    $.get('/api/computers/report/', function(data) {
+        displayComputerReport(data);
+    }).fail(function() {
+        showError('Ошибка при генерации отчета по компьютерам');
+    });
+}
+
+function generateUserReport() {
+    showLoading('Генерация отчета по пользователям...');
+
+    // Здесь можно добавить вызов API для отчета по пользователям
+    setTimeout(() => {
+        showInfo('Отчет по пользователям будет доступен в следующей версии');
+    }, 1000);
+}
+
+function generateSoftwareReport() {
+    showLoading('Генерация отчета по ПО...');
+
+    $.get('/api/software/popularity_report/', function(data) {
+        displaySoftwareReport(data);
+    }).fail(function() {
+        showError('Ошибка при генерации отчета по ПО');
+    });
+}
+
+function generateNetworkReport() {
+    showLoading('Генерация сетевого отчета...');
+
+    $.get('/api/analytics/network_usage/', function(data) {
+        displayNetworkReport(data);
+    }).fail(function() {
+        showError('Ошибка при генерации сетевого отчета');
+    });
+}
+
+function generateDepartmentReport() {
+    showLoading('Генерация отчета по отделам...');
+
+    $.get('/api/analytics/department_stats/', function(data) {
+        displayDepartmentReport(data);
+    }).fail(function() {
+        showError('Ошибка при генерации отчета по отделам');
+    });
+}
+
+function generateComprehensiveReport() {
+    showLoading('Генерация комплексного отчета...');
+
+    // Здесь можно собрать данные из нескольких источников
+    setTimeout(() => {
+        showInfo('Комплексный отчет будет доступен в следующей версии');
+    }, 1000);
+}
+
+function displayComputerReport(data) {
+    let html = '<h5>Отчет по компьютерам</h5>';
+
+    if (data.by_os_and_department && data.by_os_and_department.length > 0) {
+        html += '<h6 class="mt-3">Распределение по ОС и отделам:</h6>';
+        html += '<div class="table-responsive"><table class="table table-sm table-striped"><thead><tr><th>ОС</th><th>Отдел</th><th>Количество</th><th>Средний инв. номер</th></tr></thead><tbody>';
+
+        data.by_os_and_department.forEach(item => {
+            html += `<tr>
+                <td>${item.os}</td>
+                <td>${item.department__room_number || 'Не назначен'}</td>
+                <td>${item.computer_count}</td>
+                <td>${item.avg_inventory ? Math.round(item.avg_inventory) : 'Н/Д'}</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+    }
+
+    if (data.by_department && data.by_department.length > 0) {
+        html += '<h6 class="mt-3">Статистика по отделам:</h6>';
+        html += '<div class="table-responsive"><table class="table table-sm table-striped"><thead><tr><th>Отдел</th><th>Всего компьютеров</th><th>Windows</th><th>Linux</th></tr></thead><tbody>';
+
+        data.by_department.forEach(item => {
+            html += `<tr>
+                <td>${item.department__room_number || 'Не назначен'}</td>
+                <td>${item.total_computers}</td>
+                <td>${item.windows_count || 0}</td>
+                <td>${item.linux_count || 0}</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+    }
+
+    $('#report-results').html(html);
+}
+
+function displaySoftwareReport(data) {
+    let html = '<h5>Отчет по программному обеспечению</h5>';
+
+    if (data && data.length > 0) {
+        html += '<div class="table-responsive"><table class="table table-sm table-striped"><thead><tr><th>ПО</th><th>Версия</th><th>Количество установок</th><th>Отделов</th><th>Вендор</th></tr></thead><tbody>';
+
+        data.forEach(item => {
+            html += `<tr>
+                <td>${item.name}</td>
+                <td>${item.version}</td>
+                <td>${item.installation_count}</td>
+                <td>${item.unique_departments}</td>
+                <td>${item.vendor}</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+    } else {
+        html += '<p class="text-muted">Нет данных для отчета</p>';
+    }
+
+    $('#report-results').html(html);
+}
+
+function displayNetworkReport(data) {
+    let html = '<h5>Сетевой отчет</h5>';
+
+    if (data && data.length > 0) {
+        html += '<div class="table-responsive"><table class="table table-sm table-striped"><thead><tr><th>VLAN</th><th>Диапазон IP</th><th>Компьютеров</th><th>Макс. скорость</th></tr></thead><tbody>';
+
+        data.forEach(item => {
+            html += `<tr>
+                <td>${item.vlan}</td>
+                <td>${item.ip_range}</td>
+                <td>${item.computer_count}</td>
+                <td>${item.max_speed || 0} Мбит/с</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+    } else {
+        html += '<p class="text-muted">Нет данных для отчета</p>';
+    }
+
+    $('#report-results').html(html);
+}
+
+function displayDepartmentReport(data) {
+    let html = '<h5>Отчет по отделам</h5>';
+
+    if (data && data.length > 0) {
+        html += '<div class="table-responsive"><table class="table table-sm table-striped"><thead><tr><th>Комната</th><th>Сотрудников</th><th>Компьютеров</th><th>Соотношение</th><th>Средний инв. номер</th></tr></thead><tbody>';
+
+        data.forEach(item => {
+            const ratio = (item.computer_count / item.employee_count).toFixed(2);
+            html += `<tr>
+                <td>${item.room_number}</td>
+                <td>${item.employee_count}</td>
+                <td>${item.computer_count}</td>
+                <td>${ratio}</td>
+                <td>${item.avg_inventory ? Math.round(item.avg_inventory) : 'Н/Д'}</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+    } else {
+        html += '<p class="text-muted">Нет данных для отчета</p>';
+    }
+
+    $('#report-results').html(html);
+}
+
+function showLoading(message) {
+    $('#report-results').html(`
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+            <p class="mt-2">${message}</p>
+        </div>
+    `);
+}
+
+function showInfo(message) {
+    $('#report-results').html(`
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> ${message}
+        </div>
+    `);
+}
+
+function showError(message) {
+    $('#report-results').html(`
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> ${message}
+        </div>
+    `);
+}
+</script>
+{% endblock %}

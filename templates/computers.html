@@ -1,0 +1,386 @@
+<!-- templates/computers.html -->
+{% extends 'base.html' %}
+
+{% block title %}Компьютеры - Локальная компьютерная сеть{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h1><i class="bi bi-pc"></i> Управление компьютерами</h1>
+                <p class="lead">Добавление, редактирование и просмотр компьютеров</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Фильтры и действия -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <input type="text" id="searchInput" class="form-control" placeholder="Поиск по модели или SN...">
+                        </div>
+                        <div class="col-md-2">
+                            <select id="osFilter" class="form-select">
+                                <option value="">Все ОС</option>
+                                <option value="windows">Windows</option>
+                                <option value="linux">Linux</option>
+                                <option value="macos">macOS</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select id="departmentFilter" class="form-select">
+                                <option value="">Все отделы</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-primary" onclick="loadComputers()">
+                                <i class="bi bi-search"></i> Применить фильтры
+                            </button>
+                            <button class="btn btn-secondary" onclick="resetFilters()">
+                                <i class="bi bi-arrow-clockwise"></i> Сбросить
+                            </button>
+                        </div>
+                        <div class="col-md-2 text-end">
+                            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#computerModal">
+                                <i class="bi bi-plus-circle"></i> Добавить
+                            </button>
+                            <button class="btn export-btn" onclick="exportComputers()">
+                                <i class="bi bi-download"></i> Экспорт
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица компьютеров -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Список компьютеров</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="computersTable" class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Модель</th>
+                                    <th>ОС</th>
+                                    <th>Серийный номер</th>
+                                    <th>Инвентарный номер</th>
+                                    <th>Отдел</th>
+                                    <th>ПО</th>
+                                    <th>Скорость сети</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="computers-body">
+                                <!-- Данные загружаются через JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для добавления/редактирования -->
+<div class="modal fade" id="computerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="computerModalTitle">Добавить компьютер</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="computerForm">
+                    <input type="hidden" id="computerId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="model" class="form-label">Модель *</label>
+                            <input type="text" class="form-control" id="model" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="os" class="form-label">Операционная система *</label>
+                            <input type="text" class="form-control" id="os" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="serialNumber" class="form-label">Серийный номер *</label>
+                            <input type="number" class="form-control" id="serialNumber" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="inventoryNumber" class="form-label">Инвентарный номер *</label>
+                            <input type="number" class="form-control" id="inventoryNumber" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="department" class="form-label">Отдел</label>
+                            <select class="form-select" id="department">
+                                <option value="">Не выбран</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveComputer()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let computers = [];
+let departments = [];
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+$(document).ready(function() {
+    loadDepartments();
+    loadComputers();
+    initializeDataTable();
+});
+
+function initializeDataTable() {
+    $('#computersTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/ru.json'
+        },
+        pageLength: 25
+    });
+}
+
+function loadDepartments() {
+    $.get('/api/departments/', function(data) {
+        departments = data.results || data;
+        const select = $('#departmentFilter, #department');
+        select.empty();
+        select.append('<option value="">Все отделы</option>');
+        departments.forEach(dept => {
+            select.append(`<option value="${dept.id}">Комната ${dept.room_number}</option>`);
+        });
+    });
+}
+
+function loadComputers() {
+    const search = $('#searchInput').val();
+    const os = $('#osFilter').val();
+    const department = $('#departmentFilter').val();
+
+    let url = '/api/computers/';
+    const params = [];
+    if (search) params.push(`search=${encodeURIComponent(search)}`);
+    if (os) params.push(`os_filter=${encodeURIComponent(os)}`);
+    if (department) params.push(`department=${department}`);
+
+    if (params.length > 0) {
+        url += '?' + params.join('&');
+    }
+
+    $.get(url, function(data) {
+        computers = data.results || data;
+        renderComputers();
+    });
+}
+
+function renderComputers() {
+    const tbody = $('#computers-body');
+    tbody.empty();
+
+    computers.forEach(computer => {
+        tbody.append(`
+            <tr>
+                <td>${computer.model}</td>
+                <td>${computer.os}</td>
+                <td>${computer.serial_number}</td>
+                <td>${computer.inventory_number}</td>
+                <td>${computer.department_info || 'Не назначен'}</td>
+                <td>${computer.software_list?.join(', ') || 'Нет'}</td>
+                <td>${computer.network_speed || 0} Мбит/с</td>
+                <td class="table-actions">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editComputer(${computer.id})">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteComputer(${computer.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-info" onclick="viewComputer(${computer.id})">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `);
+    });
+}
+
+function resetFilters() {
+    $('#searchInput').val('');
+    $('#osFilter').val('');
+    $('#departmentFilter').val('');
+    loadComputers();
+}
+
+function exportComputers() {
+    window.open('/api/computers/export/', '_blank');
+}
+
+function editComputer(id) {
+    const computer = computers.find(c => c.id === id);
+    if (computer) {
+        $('#computerModalTitle').text('Редактировать компьютер');
+        $('#computerId').val(computer.id);
+        $('#model').val(computer.model);
+        $('#os').val(computer.os);
+        $('#serialNumber').val(computer.serial_number);
+        $('#inventoryNumber').val(computer.inventory_number);
+        $('#department').val(computer.department || '');
+
+        $('#computerModal').modal('show');
+    }
+}
+
+function viewComputer(id) {
+    // Редирект на детальную страницу или открытие модального окна
+    alert(`Просмотр компьютера ID: ${id}`);
+}
+
+function deleteComputer(id) {
+    if (confirm('Вы уверены, что хотите удалить этот компьютер?')) {
+        $.ajax({
+            url: `/api/computers/${id}/`,
+            type: 'DELETE',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            success: function() {
+                loadComputers();
+                showAlert('Компьютер успешно удален', 'success');
+            },
+            error: function(xhr) {
+                showAlert('Ошибка при удалении компьютера: ' + xhr.responseText, 'danger');
+            }
+        });
+    }
+}
+
+function saveComputer() {
+    // Валидация формы
+    let isValid = true;
+    const requiredFields = ['model', 'os', 'serialNumber', 'inventoryNumber'];
+
+    requiredFields.forEach(fieldId => {
+        const field = $(`#${fieldId}`);
+        if (!field.val().trim()) {
+            field.addClass('is-invalid');
+            isValid = false;
+        } else {
+            field.removeClass('is-invalid');
+        }
+    });
+
+    if (!isValid) {
+        showAlert('Пожалуйста, заполните все обязательные поля', 'warning');
+        return;
+    }
+
+    const formData = {
+        model: $('#model').val(),
+        os: $('#os').val(),
+        serial_number: parseInt($('#serialNumber').val()) || 0,
+        inventory_number: parseInt($('#inventoryNumber').val()) || 0,
+        department: $('#department').val() || null
+    };
+
+    const computerId = $('#computerId').val();
+    const url = computerId ? `/api/computers/${computerId}/` : '/api/computers/';
+    const method = computerId ? 'PUT' : 'POST';
+
+    $.ajax({
+        url: url,
+        type: method,
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json'
+        },
+        data: JSON.stringify(formData),
+        success: function(response) {
+            console.log('Success:', response);
+            $('#computerModal').modal('hide');
+            loadComputers();
+            showAlert('Компьютер успешно сохранен', 'success');
+        },
+        error: function(xhr, status, error) {
+            console.error('Error:', xhr.responseText);
+            let errorMessage = 'Ошибка при сохранении компьютера';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (typeof response === 'object') {
+                    const errors = [];
+                    for (const [key, value] of Object.entries(response)) {
+                        if (Array.isArray(value)) {
+                            errors.push(...value);
+                        } else {
+                            errors.push(value);
+                        }
+                    }
+                    errorMessage += ': ' + errors.join(', ');
+                } else {
+                    errorMessage += ': ' + response;
+                }
+            } catch (e) {
+                errorMessage += ': ' + xhr.statusText;
+            }
+            showAlert(errorMessage, 'danger');
+        }
+    });
+}
+
+function showAlert(message, type) {
+    const alert = $(`
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `);
+    $('.container-fluid').prepend(alert);
+    setTimeout(() => alert.alert('close'), 5000);
+}
+
+// Открытие модального окна для добавления
+$('#computerModal').on('show.bs.modal', function() {
+    $('#computerModalTitle').text('Добавить компьютер');
+    $('#computerForm')[0].reset();
+    $('#computerId').val('');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,374 @@
+<!-- templates/users.html -->
+{% extends 'base.html' %}
+
+{% block title %}Пользователи - Локальная компьютерная сеть{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h1><i class="bi bi-people"></i> Управление пользователями</h1>
+                <p class="lead">Добавление, редактирование и просмотр пользователей сети</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Фильтры и действия -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <input type="text" id="searchInput" class="form-control" placeholder="Поиск по ФИО или email...">
+                        </div>
+                        <div class="col-md-2">
+                            <select id="departmentFilter" class="form-select">
+                                <option value="">Все отделы</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select id="positionFilter" class="form-select">
+                                <option value="">Все должности</option>
+                                <option value="1">Руководитель</option>
+                                <option value="2">Заместитель</option>
+                                <option value="3">Сотрудник</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-primary" onclick="loadUsers()">
+                                <i class="bi bi-search"></i> Применить
+                            </button>
+                            <button class="btn btn-secondary" onclick="resetFilters()">
+                                <i class="bi bi-arrow-clockwise"></i> Сбросить
+                            </button>
+                        </div>
+                        <div class="col-md-2 text-end">
+                            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#userModal">
+                                <i class="bi bi-plus-circle"></i> Добавить
+                            </button>
+                            <button class="btn export-btn" onclick="exportUsers()">
+                                <i class="bi bi-download"></i> Экспорт
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица пользователей -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Список пользователей</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="usersTable" class="table table-striped table-hover" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>ФИО</th>
+                                    <th>Email</th>
+                                    <th>Телефон</th>
+                                    <th>Должность</th>
+                                    <th>Отдел</th>
+                                    <th>Кол-во компьютеров</th>
+                                    <th>Может управлять сетью</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-body">
+                                <!-- Данные загружаются через JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для добавления/редактирования -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalTitle">Добавить пользователя</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="full_name" class="form-label">ФИО *</label>
+                            <input type="text" class="form-control" id="full_name" required>
+                            <div class="invalid-feedback" id="full_nameError">Пожалуйста, введите ФИО</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email *</label>
+                            <input type="email" class="form-control" id="email" required>
+                            <div class="invalid-feedback" id="emailError">Введите корректный email</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Телефон *</label>
+                            <input type="text" class="form-control" id="phone" required>
+                            <div class="invalid-feedback" id="phoneError">Введите телефон</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="position_id" class="form-label">ID должности *</label>
+                            <select class="form-select" id="position_id" required>
+                                <option value="1">Руководитель</option>
+                                <option value="2">Заместитель</option>
+                                <option value="3" selected>Сотрудник</option>
+                                <option value="4">Техник</option>
+                                <option value="5">Администратор</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="department" class="form-label">Отдел</label>
+                            <select class="form-select" id="department">
+                                <option value="">Не выбран</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveUser()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let users = [];
+let departments = [];
+let dataTable = null;
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+$(document).ready(function() {
+    loadDepartments();
+    loadUsers();
+});
+
+function initializeDataTable() {
+    if (dataTable) {
+        dataTable.destroy();
+    }
+
+    dataTable = $('#usersTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/ru.json'
+        },
+        pageLength: 25,
+        order: [[0, 'asc']], // Сортировка по ФИО по умолчанию
+        columnDefs: [
+            { orderable: false, targets: 7 } // Отключаем сортировку для столбца с действиями
+        ]
+    });
+}
+
+function loadDepartments() {
+    $.get('/api/departments/', function(data) {
+        departments = data.results || data;
+        const select = $('#departmentFilter, #department');
+        select.empty();
+        select.append('<option value="">Все отделы</option>');
+        departments.forEach(dept => {
+            select.append(`<option value="${dept.id}">Комната ${dept.room_number}</option>`);
+        });
+    });
+}
+
+function loadUsers() {
+    const search = $('#searchInput').val();
+    const department = $('#departmentFilter').val();
+    const position = $('#positionFilter').val();
+
+    let url = '/api/users/';
+    const params = [];
+    if (search) params.push(`search=${encodeURIComponent(search)}`);
+    if (department) params.push(`department=${department}`);
+    if (position) params.push(`position_id=${position}`);
+
+    if (params.length > 0) {
+        url += '?' + params.join('&');
+    }
+
+    $.get(url, function(data) {
+        users = data.results || data;
+        renderUsers();
+    });
+}
+
+function renderUsers() {
+    const tbody = $('#users-body');
+    tbody.empty();
+
+    users.forEach(user => {
+        const canManageNetwork = user.can_manage_network ? 'Да' : 'Нет';
+        const computersCount = user.computers_info ? user.computers_info.length : 0;
+
+        tbody.append(`
+            <tr>
+                <td>${user.full_name}</td>
+                <td>${user.email}</td>
+                <td>${user.phone}</td>
+                <td>${getPositionName(user.position_id)}</td>
+                <td>${user.department_room || 'Не назначен'}</td>
+                <td>${computersCount}</td>
+                <td>${canManageNetwork}</td>
+                <td class="table-actions">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editUser(${user.id})">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${user.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-info" onclick="viewUser(${user.id})">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `);
+    });
+
+    // Инициализируем DataTable после загрузки данных
+    initializeDataTable();
+}
+
+function getPositionName(positionId) {
+    const positions = {
+        1: 'Руководитель',
+        2: 'Заместитель',
+        3: 'Сотрудник',
+        4: 'Техник',
+        5: 'Администратор'
+    };
+    return positions[positionId] || positionId;
+}
+
+// Остальные функции без изменений...
+function resetFilters() {
+    $('#searchInput').val('');
+    $('#departmentFilter').val('');
+    $('#positionFilter').val('');
+    loadUsers();
+}
+
+function exportUsers() {
+    window.open('/api/users/export/', '_blank');
+}
+
+function editUser(id) {
+    const user = users.find(u => u.id === id);
+    if (user) {
+        $('#userModalTitle').text('Редактировать пользователя');
+        $('#userId').val(user.id);
+        $('#full_name').val(user.full_name);
+        $('#email').val(user.email);
+        $('#phone').val(user.phone);
+        $('#position_id').val(user.position_id);
+        $('#department').val(user.department || '');
+
+        $('#userModal').modal('show');
+    }
+}
+
+function viewUser(id) {
+    window.location.href = `/users/#${id}`;
+}
+
+function deleteUser(id) {
+    if (confirm('Вы уверены, что хотите удалить этого пользователя?')) {
+        $.ajax({
+            url: `/api/users/${id}/`,
+            type: 'DELETE',
+            success: function() {
+                loadUsers();
+                showAlert('Пользователь успешно удален', 'success');
+            },
+            error: function() {
+                showAlert('Ошибка при удалении пользователя', 'danger');
+            }
+        });
+    }
+}
+
+function saveUser() {
+    const formData = {
+        full_name: $('#full_name').val(),
+        email: $('#email').val(),
+        phone: $('#phone').val(),
+        position_id: $('#position_id').val(),
+        department: $('#department').val() || null
+    };
+
+    const userId = $('#userId').val();
+    const url = userId ? `/api/users/${userId}/` : '/api/users/';
+    const method = userId ? 'PUT' : 'POST';
+
+    $.ajax({
+        url: url,
+        type: method,
+        contentType: 'application/json',
+        data: JSON.stringify(formData),
+        success: function() {
+            $('#userModal').modal('hide');
+            loadUsers();
+            showAlert('Пользователь успешно сохранен', 'success');
+        },
+        error: function(xhr) {
+            showAlert('Ошибка при сохранении пользователя: ' + xhr.responseText, 'danger');
+        }
+    });
+}
+
+function showAlert(message, type) {
+    const alert = $(`
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `);
+    $('.container-fluid').prepend(alert);
+    setTimeout(() => alert.alert('close'), 5000);
+}
+
+// Открытие модального окна для добавления
+$('#userModal').on('show.bs.modal', function() {
+    $('#userModalTitle').text('Добавить пользователя');
+    $('#userForm')[0].reset();
+    $('#userId').val('');
+});
+</script>
+{% endblock %}

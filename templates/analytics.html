@@ -1,0 +1,259 @@
+<!-- templates/analytics.html -->
+{% extends 'base.html' %}
+
+{% block title %}Аналитика - Локальная компьютерная сеть{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h1><i class="bi bi-graph-up"></i> Аналитика и отчеты</h1>
+                <p class="lead">Статистика и аналитические данные по сети</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Кнопки экспорта -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Экспорт аналитических данных</h5>
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <button class="btn export-btn w-100" onclick="exportDepartmentStats()">
+                                <i class="bi bi-building"></i> Статистика отделов
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button class="btn export-btn w-100" onclick="exportNetworkUsage()">
+                                <i class="bi bi-diagram-3"></i> Использование сетей
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button class="btn export-btn w-100" onclick="exportSoftwareDistribution()">
+                                <i class="bi bi-motherboard"></i> Распределение ПО
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button class="btn export-btn w-100" onclick="exportComprehensive()">
+                                <i class="bi bi-collection"></i> Комплексный отчет
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Аналитические данные -->
+    <div class="row">
+        <!-- Статистика отделов -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Статистика по отделам</h5>
+                    <button class="btn btn-sm btn-primary" onclick="loadDepartmentStats()">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Комната</th>
+                                    <th>Сотрудники</th>
+                                    <th>Компьютеры</th>
+                                    <th>Комп/Сотр</th>
+                                </tr>
+                            </thead>
+                            <tbody id="department-stats-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Использование сетей -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Использование сетей</h5>
+                    <button class="btn btn-sm btn-primary" onclick="loadNetworkUsage()">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>VLAN</th>
+                                    <th>Диапазон IP</th>
+                                    <th>Компьютеры</th>
+                                    <th>Макс. скорость</th>
+                                </tr>
+                            </thead>
+                            <tbody id="network-usage-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Расширенные запросы -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Расширенные запросы</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <select id="advancedQueryType" class="form-select">
+                                <option value="high_speed_networks">Высокоскоростные сети</option>
+                                <option value="software_by_vendor">ПО по вендору</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" id="vendorFilter" class="form-control" placeholder="Вендор..." style="display: none;">
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary" onclick="runAdvancedQuery()">
+                                <i class="bi bi-play-circle"></i> Выполнить запрос
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead id="advanced-query-head">
+                            </thead>
+                            <tbody id="advanced-query-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    loadDepartmentStats();
+    loadNetworkUsage();
+
+    // Показ/скрытие поля вендора
+    $('#advancedQueryType').change(function() {
+        if ($(this).val() === 'software_by_vendor') {
+            $('#vendorFilter').show();
+        } else {
+            $('#vendorFilter').hide();
+        }
+    });
+});
+
+function loadDepartmentStats() {
+    $.get('/api/analytics/department_stats/', function(data) {
+        const tbody = $('#department-stats-body');
+        tbody.empty();
+
+        data.forEach(dept => {
+            tbody.append(`
+                <tr>
+                    <td>${dept.room_number}</td>
+                    <td>${dept.employee_count}</td>
+                    <td>${dept.computer_count}</td>
+                    <td>${(dept.computer_count / dept.employee_count).toFixed(2)}</td>
+                </tr>
+            `);
+        });
+    });
+}
+
+function loadNetworkUsage() {
+    $.get('/api/analytics/network_usage/', function(data) {
+        const tbody = $('#network-usage-body');
+        tbody.empty();
+
+        data.forEach(network => {
+            tbody.append(`
+                <tr>
+                    <td>${network.vlan}</td>
+                    <td>${network.ip_range}</td>
+                    <td>${network.computer_count}</td>
+                    <td>${network.max_speed || 0} Мбит/с</td>
+                </tr>
+            `);
+        });
+    });
+}
+
+function runAdvancedQuery() {
+    const queryType = $('#advancedQueryType').val();
+    const vendor = $('#vendorFilter').val();
+
+    let url = `/api/analytics/advanced_queries/?type=${queryType}`;
+    if (vendor) {
+        url += `&vendor=${encodeURIComponent(vendor)}`;
+    }
+
+    $.get(url, function(data) {
+        const thead = $('#advanced-query-head');
+        const tbody = $('#advanced-query-body');
+
+        thead.empty();
+        tbody.empty();
+
+        if (data.length > 0) {
+            // Создаем заголовки на основе ключей первого элемента
+            const headers = Object.keys(data[0]);
+            let headerRow = '<tr>';
+            headers.forEach(header => {
+                headerRow += `<th>${header.replace(/_/g, ' ').toUpperCase()}</th>`;
+            });
+            headerRow += '</tr>';
+            thead.append(headerRow);
+
+            // Заполняем данные
+            data.forEach(item => {
+                let row = '<tr>';
+                headers.forEach(header => {
+                    row += `<td>${item[header]}</td>`;
+                });
+                row += '</tr>';
+                tbody.append(row);
+            });
+        }
+    });
+}
+
+// Функции экспорта
+function exportDepartmentStats() {
+    window.open('/api/analytics/export_department_stats/', '_blank');
+}
+
+function exportNetworkUsage() {
+    window.open('/api/analytics/export_network_usage/', '_blank');
+}
+
+function exportSoftwareDistribution() {
+    // Добавьте соответствующий endpoint
+    window.open('/api/analytics/export_analytics/?query=software_distribution', '_blank');
+}
+
+function exportComprehensive() {
+    window.open('/api/analytics/comprehensive_export/', '_blank');
+}
+</script>
+{% endblock %}

@@ -1,14 +1,27 @@
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 
-class Department(models.Model):
+
+class CustomModel(models.Model):
+
+    class Meta:
+        abstract = True
+        managed = True
+
+class Department(CustomModel):
     id = models.BigAutoField(primary_key=True)
     room_number = models.IntegerField()
     internal_phone = models.IntegerField()
     employee_count = models.IntegerField()
-    employee_phones = models.JSONField()  # Для массива integer[]
+    employee_phones = ArrayField(
+        base_field=models.IntegerField(),
+        default=list,
+        blank=True,
+        null=True
+    )
 
-    class Meta:
-        db_table = '"LocalComputerNetwork"."Department"'
+    class Meta(CustomModel.Meta):
+        db_table = 'Department'
         verbose_name = 'Отдел'
         verbose_name_plural = 'Отделы'
 
@@ -16,7 +29,7 @@ class Department(models.Model):
         return f"Отдел {self.room_number} (тел: {self.internal_phone})"
 
 
-class Computer(models.Model):
+class Computer(CustomModel):
     id = models.BigAutoField(primary_key=True)
     serial_number = models.IntegerField()
     model = models.CharField(max_length=100)
@@ -30,8 +43,8 @@ class Computer(models.Model):
         related_name='computers'
     )
 
-    class Meta:
-        db_table = '"LocalComputerNetwork"."Computer"'
+    class Meta(CustomModel.Meta):
+        db_table = 'Computer'
         verbose_name = 'Компьютер'
         verbose_name_plural = 'Компьютеры'
 
@@ -39,7 +52,7 @@ class Computer(models.Model):
         return f"{self.model} (SN: {self.serial_number})"
 
 
-class User(models.Model):
+class User(CustomModel):
     id = models.BigAutoField(primary_key=True)
     full_name = models.CharField(max_length=100)
     phone = models.CharField(max_length=50)
@@ -58,8 +71,8 @@ class User(models.Model):
         related_name='users'
     )
 
-    class Meta:
-        db_table = '"LocalComputerNetwork"."User"'
+    class Meta(CustomModel.Meta):
+        db_table = 'User'
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
 
@@ -67,26 +80,26 @@ class User(models.Model):
         return self.full_name
 
 
-class UserComputer(models.Model):
+class UserComputer(CustomModel):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        db_column='"User_id"'
+        db_column='User_id'
     )
     computer = models.ForeignKey(
         Computer,
         on_delete=models.CASCADE,
-        db_column='"Computer_id"'
+        db_column='Computer_id'
     )
 
-    class Meta:
-        db_table = '"LocalComputerNetwork"."User_Computer"'
+    class Meta(CustomModel.Meta):
+        db_table = 'User_Computer'
         unique_together = [['user', 'computer']]
         verbose_name = 'Пользователь-Компьютер'
         verbose_name_plural = 'Связи Пользователь-Компьютер'
 
 
-class Software(models.Model):
+class Software(CustomModel):
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=50)
     version = models.CharField(max_length=100)
@@ -98,8 +111,8 @@ class Software(models.Model):
         related_name='software'
     )
 
-    class Meta:
-        db_table = '"LocalComputerNetwork"."Software"'
+    class Meta(CustomModel.Meta):
+        db_table = 'Software'
         verbose_name = 'Программное обеспечение'
         verbose_name_plural = 'Программное обеспечение'
 
@@ -107,34 +120,34 @@ class Software(models.Model):
         return f"{self.name} {self.version}"
 
 
-class SoftwareComputer(models.Model):
+class SoftwareComputer(CustomModel):
     software = models.ForeignKey(
         Software,
         on_delete=models.CASCADE,
-        db_column='"Software_id"'
+        db_column='Software_id'
     )
     computer = models.ForeignKey(
         Computer,
         on_delete=models.CASCADE,
-        db_column='"Computer_id"'
+        db_column='Computer_id'
     )
 
-    class Meta:
-        db_table = '"LocalComputerNetwork"."Software_Computer"'
+    class Meta(CustomModel.Meta):
+        db_table = 'Software_Computer'
         unique_together = [['software', 'computer']]
         verbose_name = 'ПО-Компьютер'
         verbose_name_plural = 'Связи ПО-Компьютер'
 
 
-class Equipment(models.Model):
+class Equipment(CustomModel):
     id = models.BigAutoField(primary_key=True)
     bandwidth = models.IntegerField()
     setup_date = models.DateField()
     port_count = models.IntegerField()
     type = models.CharField(max_length=50)
 
-    class Meta:
-        db_table = '"LocalComputerNetwork"."Equipment"'
+    class Meta(CustomModel.Meta):
+        db_table = 'Equipment'
         verbose_name = 'Оборудование'
         verbose_name_plural = 'Оборудование'
 
@@ -142,7 +155,7 @@ class Equipment(models.Model):
         return f"{self.type} (портов: {self.port_count})"
 
 
-class Network(models.Model):
+class Network(CustomModel):
     id = models.BigAutoField(primary_key=True)
     subnet_mask = models.GenericIPAddressField()
     vlan = models.SmallIntegerField()
@@ -158,8 +171,8 @@ class Network(models.Model):
         related_name='networks'
     )
 
-    class Meta:
-        db_table = '"LocalComputerNetwork"."Network"'
+    class Meta(CustomModel.Meta):
+        db_table = 'Network'
         verbose_name = 'Сеть'
         verbose_name_plural = 'Сети'
 
@@ -167,29 +180,30 @@ class Network(models.Model):
         return f"VLAN {self.vlan} ({self.ip_range})"
 
 
-class NetworkComputer(models.Model):
+class NetworkComputer(CustomModel):
+    id = models.BigAutoField(primary_key=True)
     network = models.ForeignKey(
         Network,
         on_delete=models.CASCADE,
-        db_column='"Network_id"'
+        db_column='Network_id'
     )
     computer = models.ForeignKey(
         Computer,
         on_delete=models.CASCADE,
-        db_column='"Computer_id"'
+        db_column='Computer_id'
     )
     ip_address = models.GenericIPAddressField()
-    mac_address = models.CharField(max_length=17)  # macaddr в PostgreSQL
+    mac_address = models.CharField(max_length=17)
     speed = models.IntegerField()
 
-    class Meta:
-        db_table = '"LocalComputerNetwork"."Network_Computer"'
+    class Meta(CustomModel.Meta):
+        db_table = 'Network_Computer'
         unique_together = [['network', 'computer']]
         verbose_name = 'Сеть-Компьютер'
         verbose_name_plural = 'Связи Сеть-Компьютер'
 
 
-class Server(models.Model):
+class Server(CustomModel):
     id = models.BigAutoField(primary_key=True)
     port = models.IntegerField()
     hostname = models.CharField(max_length=255)
@@ -201,8 +215,8 @@ class Server(models.Model):
         related_name='servers'
     )
 
-    class Meta:
-        db_table = '"LocalComputerNetwork"."Server"'
+    class Meta(CustomModel.Meta):
+        db_table = 'Server'
         verbose_name = 'Сервер'
         verbose_name_plural = 'Серверы'
 
@@ -210,26 +224,26 @@ class Server(models.Model):
         return self.hostname
 
 
-class ServerNetwork(models.Model):
+class ServerNetwork(CustomModel):
     server = models.ForeignKey(
         Server,
         on_delete=models.CASCADE,
-        db_column='"Server_id"'
+        db_column='Server_id'
     )
     network = models.ForeignKey(
         Network,
         on_delete=models.CASCADE,
-        db_column='"Network_id"'
+        db_column='Network_id'
     )
 
-    class Meta:
-        db_table = '"LocalComputerNetwork"."Server_Network"'
+    class Meta(CustomModel.Meta):
+        db_table = 'Server_Network'
         unique_together = [['server', 'network']]
         verbose_name = 'Сервер-Сеть'
         verbose_name_plural = 'Связи Сервер-Сеть'
 
 
-class HostComputer(models.Model):
+class HostComputer(CustomModel):
     id = models.BigAutoField(primary_key=True)
     hostname = models.CharField(max_length=100)
     ip_address = models.GenericIPAddressField()
@@ -242,11 +256,10 @@ class HostComputer(models.Model):
         unique=True
     )
 
-    class Meta:
-        db_table = '"LocalComputerNetwork"."Host_Computer"'
+    class Meta(CustomModel.Meta):
+        db_table = 'Host_Computer'
         verbose_name = 'Хост-компьютер'
         verbose_name_plural = 'Хост-компьютеры'
 
     def __str__(self):
         return f"{self.hostname} ({self.ip_address})"
-
