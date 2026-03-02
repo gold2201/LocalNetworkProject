@@ -41,32 +41,6 @@ MIDDLEWARE = [
     'debug_toolbar.middleware.DebugToolbarMiddleware'
 ]
 
-
-KAFKA_PRODUCER_CONFIG = {
-    'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
-    'client.id': 'django-network-producer',
-    'acks': 'all',
-    'retries': 3,
-    'max.in.flight.requests.per.connection': 1,
-    'compression.type': 'snappy',
-    'linger.ms': 5,
-    'batch.size': 65536,
-}
-
-KAFKA_CONSUMER_CONFIG = {
-    'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
-    'group.id': 'django-network-consumer-group',
-    'auto.offset.reset': 'earliest',
-    'enable.auto.commit': False,
-    'session.timeout.ms': 60000,
-    'max.poll.interval.ms': 300000,
-}
-
-KAFKA_TOPICS = {
-    'USER_CREATED': 'user-created',
-    'EQUIPMENT_CHANGED': 'equipment-changed',
-}
-
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
@@ -91,7 +65,7 @@ STATICFILES_DIRS = [
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],  # Добавляем папку templates
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

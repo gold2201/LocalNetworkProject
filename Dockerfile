@@ -1,26 +1,32 @@
-FROM python:3.11-slim
+FROM python:3.13-slim AS builder
+
+WORKDIR /install
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+FROM python:3.13-slim
 
 WORKDIR /app
 
-# Установка системных зависимостей
-RUN apt-get update && apt-get install -y \
-    gcc \
-    postgresql-client \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
-# Копирование зависимостей
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Копирование проекта
+COPY --from=builder /install /usr/local
 COPY . .
 
-# Создание пользователя для безопасности
-RUN useradd -m -u 1000 django && chown -R django:django /app
+RUN useradd -m django \
+    && chown -R django:django /app
+
 USER django
 
-# Порт приложения
 EXPOSE 8000
 
-# Команда запуска
 CMD ["gunicorn", "network_project.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
