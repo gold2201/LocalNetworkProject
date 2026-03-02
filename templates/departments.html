@@ -1,0 +1,620 @@
+<!-- templates/departments.html -->
+{% extends 'base.html' %}
+
+{% block title %}Отделы - Локальная компьютерная сеть{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h1><i class="bi bi-building"></i> Управление отделами</h1>
+                <p class="lead">Добавление, редактирование и просмотр отделов организации</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Уведомления -->
+    <div id="alert-container"></div>
+
+    <!-- Фильтры и действия -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <input type="text" id="searchInput" class="form-control" placeholder="Поиск по номеру комнаты или телефону...">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="number" id="minEmployees" class="form-control" placeholder="Мин. сотрудников">
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary" onclick="loadDepartments()">
+                                <i class="bi bi-search"></i> Применить
+                            </button>
+                            <button class="btn btn-secondary" onclick="resetFilters()">
+                                <i class="bi bi-arrow-clockwise"></i> Сбросить
+                            </button>
+                        </div>
+                        <div class="col-md-2 text-end">
+                            <button class="btn btn-success" onclick="showAddModal()">
+                                <i class="bi bi-plus-circle"></i> Добавить
+                            </button>
+                            <button class="btn btn-info" onclick="exportDepartments()">
+                                <i class="bi bi-download"></i> Экспорт
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица отделов -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Список отделов</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="departmentsTable" class="table table-striped table-hover" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Номер комнаты</th>
+                                    <th>Внутренний телефон</th>
+                                    <th>Кол-во сотрудников</th>
+                                    <th>Телефоны сотрудников</th>
+                                    <th>Кол-во компьютеров</th>
+                                    <th>Хост-компьютер</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="departments-body">
+                                <!-- Данные загружаются через JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для добавления/редактирования -->
+<div class="modal fade" id="departmentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="departmentModalTitle">Добавить отдел</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="departmentForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="departmentId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="room_number" class="form-label">Номер комнаты *</label>
+                            <input type="number" class="form-control" id="room_number" required>
+                            <div class="invalid-feedback" id="room_numberError">Пожалуйста, введите номер комнаты</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="internal_phone" class="form-label">Внутренний телефон *</label>
+                            <input type="text" class="form-control" id="internal_phone" required>
+                            <div class="invalid-feedback" id="internal_phoneError">Пожалуйста, введите внутренний телефон</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="employee_count" class="form-label">Количество сотрудников *</label>
+                            <input type="number" class="form-control" id="employee_count" min="1" required>
+                            <div class="invalid-feedback" id="employee_countError">Пожалуйста, введите количество сотрудников</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="employee_phones" class="form-label">Телефоны сотрудников (через запятую)</label>
+                            <input type="text" class="form-control" id="employee_phones" placeholder="123, 456, 789">
+                            <div class="form-text">Необязательное поле</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveDepartment()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Вы уверены, что хотите удалить этот отдел?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">Удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для статистики -->
+<div class="modal fade" id="statisticsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="statisticsModalTitle">Статистика отдела</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="statisticsModalBody">
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <p class="mt-2">Загрузка статистики...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let departments = [];
+let dataTable = null;
+let currentDepartmentId = null;
+
+// Получение CSRF токена для AJAX запросов
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+$(document).ready(function() {
+    loadDepartments();
+
+    // Инициализация DataTable
+    dataTable = $('#departmentsTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/ru.json'
+        },
+        pageLength: 25,
+        order: [[1, 'asc']],
+        columnDefs: [
+            { orderable: false, targets: [0, 4, 7] },
+            { searchable: false, targets: [0, 4, 7] }
+        ]
+    });
+
+    // Поиск в таблице при вводе в поле поиска
+    $('#searchInput').on('keyup', function() {
+        dataTable.search(this.value).draw();
+    });
+
+    // Инициализация Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+function loadDepartments() {
+    const search = $('#searchInput').val();
+    const minEmployees = $('#minEmployees').val();
+
+    let url = '/api/departments/';
+    const params = [];
+    if (search) params.push(`search=${encodeURIComponent(search)}`);
+    if (minEmployees) params.push(`min_employees=${minEmployees}`);
+
+    if (params.length > 0) {
+        url += '?' + params.join('&');
+    }
+
+    $.ajax({
+        url: url,
+        method: 'GET',
+        success: function(data) {
+            departments = Array.isArray(data) ? data : (data.results || []);
+            console.log('Loaded departments:', departments);
+            renderDepartments();
+        },
+        error: function(xhr) {
+            console.error('Error loading departments:', xhr);
+            showAlert('Ошибка при загрузке данных', 'danger');
+        }
+    });
+}
+
+function renderDepartments() {
+    const tbody = $('#departments-body');
+    tbody.empty();
+
+    if (departments.length === 0) {
+        tbody.append(`
+            <tr>
+                <td colspan="8" class="text-center">Нет данных для отображения</td>
+            </tr>
+        `);
+        return;
+    }
+
+    departments.forEach(department => {
+        const phones = department.employee_phones && department.employee_phones.length > 0
+            ? department.employee_phones.join(', ')
+            : 'Нет';
+        const computersCount = department.computers_count || 0;
+        const hostComputer = department.host_computer_ip || 'Не назначен';
+
+        tbody.append(`
+            <tr>
+                <td>${department.id}</td>
+                <td>${department.room_number}</td>
+                <td>${department.internal_phone}</td>
+                <td>${department.employee_count}</td>
+                <td>${phones}</td>
+                <td>${computersCount}</td>
+                <td>${hostComputer}</td>
+                <td class="table-actions">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editDepartment(${department.id})" title="Редактировать" data-bs-toggle="tooltip">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger me-1" onclick="showDeleteConfirm(${department.id})" title="Удалить" data-bs-toggle="tooltip">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-info" onclick="showStatistics(${department.id})" title="Статистика" data-bs-toggle="tooltip">
+                        <i class="bi bi-graph-up"></i>
+                    </button>
+                </td>
+            </tr>
+        `);
+    });
+
+    // Обновляем DataTable
+    if (dataTable) {
+        dataTable.clear().rows.add($('#departments-body tr')).draw();
+    }
+}
+
+function showStatistics(id) {
+    console.log('Showing statistics for department ID:', id);
+
+    // Сбрасываем содержимое модального окна
+    $('#statisticsModalBody').html(`
+        <div class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+            <p class="mt-2">Загрузка статистики...</p>
+        </div>
+    `);
+
+    // Обновляем заголовок
+    $('#statisticsModalTitle').text('Статистика отдела');
+
+    // Показываем модальное окно сразу
+    $('#statisticsModal').modal('show');
+
+    // Загружаем статистику
+    $.ajax({
+        url: `/api/departments/${id}/statistics/`,
+        method: 'GET',
+        success: function(data) {
+            console.log('Statistics data received:', data);
+
+            // Форматируем статистику
+            const statsHtml = `
+                <div class="statistics-content">
+                    <h6 class="text-primary mb-3">Отдел #${data.department_id}</h6>
+
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 60%">Показатель</th>
+                            <th style="width: 40%" class="text-end">Значение</th>
+                        </tr>
+                        <tr>
+                            <td>Номер комнаты:</td>
+                            <td class="text-end"><strong>${data.room_number || 'Нет'}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Количество компьютеров:</td>
+                            <td class="text-end"><strong>${data.total_computers || 0}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Количество пользователей:</td>
+                            <td class="text-end"><strong>${data.total_users || 0}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Компьютеров на сотрудника:</td>
+                            <td class="text-end"><strong>${data.computers_per_employee || 0}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Статус оснащенности:</td>
+                            <td class="text-end">
+                                ${data.is_under_equipped ?
+                                    '<span class="badge bg-danger">Недооснащен</span>' :
+                                    '<span class="badge bg-success">Нормально оснащен</span>'}
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div class="alert alert-info mt-3">
+                        <small>
+                            <i class="bi bi-info-circle"></i>
+                            Статистика рассчитывается на основе данных об отделе,
+                            компьютерах и пользователях.
+                        </small>
+                    </div>
+                </div>
+            `;
+
+            $('#statisticsModalBody').html(statsHtml);
+            $('#statisticsModalTitle').text(`Статистика отдела #${data.department_id}`);
+        },
+        error: function(xhr, status, error) {
+            console.error('Error loading statistics:', error, xhr.responseText);
+
+            let errorMessage = 'Неизвестная ошибка';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                errorMessage = response.error || response.detail || JSON.stringify(response);
+            } catch (e) {
+                errorMessage = xhr.responseText || error;
+            }
+
+            $('#statisticsModalBody').html(`
+                <div class="alert alert-danger">
+                    <h6 class="alert-heading">Ошибка загрузки статистики</h6>
+                    <p class="mb-0">${errorMessage}</p>
+                    <hr>
+                    <p class="mb-0 small">
+                        <strong>URL:</strong> /api/departments/${id}/statistics/<br>
+                        <strong>Статус:</strong> ${xhr.status} ${xhr.statusText}
+                    </p>
+                </div>
+            `);
+        }
+    });
+}
+
+function resetFilters() {
+    $('#searchInput').val('');
+    $('#minEmployees').val('');
+    if (dataTable) {
+        dataTable.search('').draw();
+    }
+    loadDepartments();
+}
+
+function exportDepartments() {
+    const search = $('#searchInput').val();
+    const minEmployees = $('#minEmployees').val();
+
+    let url = '/api/departments/export/';
+    const params = [];
+    if (search) params.push(`search=${encodeURIComponent(search)}`);
+    if (minEmployees) params.push(`min_employees=${minEmployees}`);
+
+    if (params.length > 0) {
+        url += '?' + params.join('&');
+    }
+
+    window.open(url, '_blank');
+}
+
+function showAddModal() {
+    $('#departmentModalTitle').text('Добавить отдел');
+    $('#departmentForm')[0].reset();
+    $('#departmentId').val('');
+    $('.invalid-feedback').hide();
+    $('.form-control').removeClass('is-invalid');
+    $('#departmentModal').modal('show');
+}
+
+function editDepartment(id) {
+    const department = departments.find(d => d.id === id);
+    if (department) {
+        $('#departmentModalTitle').text('Редактировать отдел');
+        $('#departmentId').val(department.id);
+        $('#room_number').val(department.room_number);
+        $('#internal_phone').val(department.internal_phone);
+        $('#employee_count').val(department.employee_count);
+        $('#employee_phones').val(department.employee_phones ? department.employee_phones.join(', ') : '');
+
+        $('.invalid-feedback').hide();
+        $('.form-control').removeClass('is-invalid');
+        $('#departmentModal').modal('show');
+    }
+}
+
+function showDeleteConfirm(id) {
+    currentDepartmentId = id;
+    $('#confirmDeleteModal').modal('show');
+}
+
+function confirmDelete() {
+    if (!currentDepartmentId) return;
+
+    $.ajax({
+        url: `/api/departments/${currentDepartmentId}/`,
+        type: 'DELETE',
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        success: function() {
+            $('#confirmDeleteModal').modal('hide');
+            loadDepartments();
+            showAlert('Отдел успешно удален', 'success');
+            currentDepartmentId = null;
+        },
+        error: function(xhr) {
+            $('#confirmDeleteModal').modal('hide');
+            showAlert('Ошибка при удалении отдела: ' + (xhr.responseText || 'Неизвестная ошибка'), 'danger');
+            currentDepartmentId = null;
+        }
+    });
+}
+
+function saveDepartment() {
+    // Валидация формы
+    let isValid = true;
+    const requiredFields = ['room_number', 'internal_phone', 'employee_count'];
+
+    requiredFields.forEach(fieldId => {
+        const field = $(`#${fieldId}`);
+        const value = field.val().trim();
+
+        if (!value) {
+            field.addClass('is-invalid');
+            $(`#${fieldId}Error`).show();
+            isValid = false;
+        } else {
+            // Дополнительная валидация для чисел
+            if (fieldId === 'room_number' || fieldId === 'employee_count') {
+                const numValue = parseInt(value);
+                if (isNaN(numValue) || numValue <= 0) {
+                    field.addClass('is-invalid');
+                    $(`#${fieldId}Error`).text(`Поле должно быть положительным числом`).show();
+                    isValid = false;
+                } else {
+                    field.removeClass('is-invalid');
+                    $(`#${fieldId}Error`).hide();
+                }
+            } else if (fieldId === 'internal_phone') {
+                // Для телефона проверяем что это число
+                const phoneValue = value.replace(/\D/g, '');
+                if (!phoneValue) {
+                    field.addClass('is-invalid');
+                    $(`#${fieldId}Error`).text(`Телефон должен содержать цифры`).show();
+                    isValid = false;
+                } else {
+                    field.removeClass('is-invalid');
+                    $(`#${fieldId}Error`).hide();
+                }
+            } else {
+                field.removeClass('is-invalid');
+                $(`#${fieldId}Error`).hide();
+            }
+        }
+    });
+
+    if (!isValid) {
+        showAlert('Пожалуйста, заполните все обязательные поля правильно', 'warning');
+        return;
+    }
+
+    // Подготовка данных
+    const employeePhones = $('#employee_phones').val()
+        .split(',')
+        .map(phone => phone.trim())
+        .filter(phone => phone)
+        .map(phone => parseInt(phone))
+        .filter(phone => !isNaN(phone));
+
+    const formData = {
+        room_number: parseInt($('#room_number').val()),
+        internal_phone: parseInt($('#internal_phone').val().replace(/\D/g, '')),
+        employee_count: parseInt($('#employee_count').val()),
+        employee_phones: employeePhones
+    };
+
+    console.log('Sending data:', JSON.stringify(formData));
+
+    const departmentId = $('#departmentId').val();
+    const url = departmentId ? `/api/departments/${departmentId}/` : '/api/departments/';
+    const method = departmentId ? 'PUT' : 'POST';
+
+    $.ajax({
+        url: url,
+        type: method,
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json'
+        },
+        data: JSON.stringify(formData),
+        success: function(response) {
+            console.log('Success response:', response);
+            $('#departmentModal').modal('hide');
+            loadDepartments();
+            showAlert('Отдел успешно сохранен', 'success');
+        },
+        error: function(xhr, status, error) {
+            console.error('Error:', xhr.responseText);
+            let errorMessage = 'Ошибка при сохранении отдела';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (typeof response === 'object') {
+                    const errors = [];
+                    for (const [key, value] of Object.entries(response)) {
+                        if (Array.isArray(value)) {
+                            errors.push(...value);
+                        } else {
+                            errors.push(value);
+                        }
+                    }
+                    errorMessage += ': ' + errors.join(', ');
+                } else {
+                    errorMessage += ': ' + response;
+                }
+            } catch (e) {
+                errorMessage += ': ' + xhr.statusText;
+            }
+            showAlert(errorMessage, 'danger');
+        }
+    });
+}
+
+function showAlert(message, type) {
+    const alertId = 'alert-' + Date.now();
+    const alertHtml = `
+        <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" onclick="$('#${alertId}').alert('close')"></button>
+        </div>
+    `;
+
+    $('#alert-container').append(alertHtml);
+
+    // Автоматическое скрытие через 5 секунд
+    setTimeout(() => {
+        $(`#${alertId}`).alert('close');
+    }, 5000);
+}
+
+// Закрытие модального окна
+$('#departmentModal').on('hidden.bs.modal', function() {
+    $('#departmentForm')[0].reset();
+    $('.invalid-feedback').hide();
+    $('.form-control').removeClass('is-invalid');
+});
+</script>
+{% endblock %}
