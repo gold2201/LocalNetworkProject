@@ -1,0 +1,212 @@
+<!-- templates/dashboard.html -->
+{% extends 'base.html' %}
+
+{% block title %}Дашборд - Локальная компьютерная сеть{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h1><i class="bi bi-speedometer2"></i> Дашборд</h1>
+                <p class="lead">Обзор состояния локальной компьютерной сети</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Статистика -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title text-muted">Отделы</h5>
+                            <h2 id="departments-count" class="mb-0">-</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-building fs-1 text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title text-muted">Компьютеры</h5>
+                            <h2 id="computers-count" class="mb-0">-</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-pc fs-1 text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title text-muted">Пользователи</h5>
+                            <h2 id="users-count" class="mb-0">-</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-people fs-1 text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title text-muted">Сети</h5>
+                            <h2 id="networks-count" class="mb-0">-</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-diagram-3 fs-1 text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Быстрые действия -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Быстрые действия</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'computers-ui' %}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-plus-circle"></i> Добавить компьютер
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'users-ui' %}" class="btn btn-outline-success w-100">
+                                <i class="bi bi-person-plus"></i> Добавить пользователя
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'analytics-ui' %}" class="btn btn-outline-info w-100">
+                                <i class="bi bi-graph-up"></i> Просмотреть аналитику
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{% url 'reports-ui' %}" class="btn btn-outline-warning w-100">
+                                <i class="bi bi-file-earmark-pdf"></i> Создать отчет
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Последние компьютеры -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Последние компьютеры</h5>
+                    <a href="{% url 'computers-ui' %}" class="btn btn-sm btn-primary">Все компьютеры</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="recentComputersTable" class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Модель</th>
+                                    <th>ОС</th>
+                                    <th>Серийный номер</th>
+                                    <th>Отдел</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-computers-body">
+                                <!-- Данные загружаются через JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Загрузка статистики
+    function loadStats() {
+        // Загрузка количества отделов
+        $.get('/api/departments/', function(data) {
+            $('#departments-count').text(data.count || data.length);
+        });
+
+        // Загрузка количества компьютеров
+        $.get('/api/computers/', function(data) {
+            $('#computers-count').text(data.count || data.length);
+        });
+
+        // Загрузка количества пользователей
+        $.get('/api/users/', function(data) {
+            $('#users-count').text(data.count || data.length);
+        });
+
+        // Загрузка количества сетей
+        $.get('/api/networks/', function(data) {
+            $('#networks-count').text(data.count || data.length);
+        });
+    }
+
+    // Загрузка последних компьютеров
+    function loadRecentComputers() {
+        $.get('/api/computers/?limit=5', function(data) {
+            const tbody = $('#recent-computers-body');
+            tbody.empty();
+
+            data.results?.slice(0, 5).forEach(computer => {
+                tbody.append(`
+                    <tr>
+                        <td>${computer.model}</td>
+                        <td>${computer.os}</td>
+                        <td>${computer.serial_number}</td>
+                        <td>${computer.department_info || 'Не назначен'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewComputer(${computer.id})">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `);
+            });
+        });
+    }
+
+    function viewComputer(id) {
+        window.location.href = `/computers/#${id}`;
+    }
+
+    // Инициализация
+    loadStats();
+    loadRecentComputers();
+});
+</script>
+{% endblock %}

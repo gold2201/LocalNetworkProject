@@ -1,0 +1,529 @@
+<!-- templates/host-computers.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Хост-компьютеры - Локальная компьютерная сеть{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+<style>
+.host-status {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+.host-online { background-color: #28a745; }
+.host-offline { background-color: #dc3545; }
+#loading-row { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-3">
+            <div class="col-12">
+                <h1><i class="bi bi-hdd"></i> Хост-компьютеры</h1>
+                <p class="lead">Управление основными компьютерами отделов</p>
+            </div>
+        </div>
+
+        <!-- Фильтры и действия -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <input type="text" id="hostnameFilter" class="form-control" placeholder="Имя хоста...">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" id="ipFilter" class="form-control" placeholder="IP-адрес...">
+                            </div>
+                            <div class="col-md-2">
+                                <input type="number" id="departmentFilter" class="form-control" placeholder="ID отдела">
+                            </div>
+                            <div class="col-md-2">
+                                <select id="hasDepartmentFilter" class="form-select">
+                                    <option value="">Все</option>
+                                    <option value="true">С отделом</option>
+                                    <option value="false">Без отдела</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex gap-2">
+                                <button class="btn btn-primary flex-fill" onclick="applyFilters()">
+                                    <i class="bi bi-search"></i> Поиск
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="resetFilters()" title="Сбросить">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-8">
+                                <input type="text" id="searchFilter" class="form-control" placeholder="Поиск по всем полям...">
+                            </div>
+                            <div class="col-md-4 d-flex gap-2">
+                                <button class="btn export-btn flex-fill" onclick="exportHostComputers()">
+                                    <i class="bi bi-download"></i> Экспорт
+                                </button>
+                                <button class="btn btn-success" onclick="refreshAllHostComputers()">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таблица хост-компьютеров -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Список хост-компьютеров</h5>
+                        <div class="d-flex align-items-center">
+                            <span class="me-3 text-muted" id="total-count">Загрузка...</span>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="refreshTable()">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table id="hostComputersTable" class="table table-striped table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Имя хоста</th>
+                                        <th>IP-адрес</th>
+                                        <th>MAC-адрес</th>
+                                        <th>Отдел</th>
+                                        <th>Номер комнаты</th>
+                                        <th width="100" class="text-end">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="host-computers-body">
+                                    <tr id="loading-row">
+                                        <td colspan="6" class="text-center py-5">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Загрузка...</span>
+                                            </div>
+                                            <p class="mt-2 text-muted">Загрузка данных...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="dataTables_info" id="pagination-info">Загрузка...</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-end">
+                                    <nav id="pagination-controls">
+                                        <!-- Пагинация загружается динамически -->
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для просмотра деталей -->
+<div class="modal fade" id="hostComputerDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-hdd me-2"></i>Детали хост-компьютера
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="host-computer-detail-content">
+                    <!-- Содержимое загружается динамически -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Глобальные переменные
+let allHostComputers = [];
+let filteredHostComputers = [];
+let currentPage = 1;
+let itemsPerPage = 25;
+
+$(document).ready(function() {
+    loadAllHostComputers();
+    setupEventListeners();
+});
+
+function setupEventListeners() {
+    // Поиск по Enter
+    $('#searchFilter').on('keypress', function(e) {
+        if (e.which === 13) applyFilters();
+    });
+
+    // Автоматический фильтр при изменении
+    let filterTimer;
+    $('#hostnameFilter, #ipFilter, #departmentFilter, #hasDepartmentFilter, #searchFilter').on('input change', function() {
+        clearTimeout(filterTimer);
+        filterTimer = setTimeout(applyFilters, 500);
+    });
+}
+
+function loadAllHostComputers() {
+    showLoading(true);
+
+    const params = new URLSearchParams();
+
+    // Собираем все фильтры
+    const hostname = $('#hostnameFilter').val();
+    const ip = $('#ipFilter').val();
+    const department = $('#departmentFilter').val();
+    const hasDepartment = $('#hasDepartmentFilter').val();
+    const search = $('#searchFilter').val();
+
+    if (hostname) params.append('hostname', hostname);
+    if (ip) params.append('ip_address', ip);
+    if (department) params.append('department', department);
+    if (hasDepartment) params.append('has_department', hasDepartment);
+    if (search) params.append('search', search);
+
+    const url = `/api/host-computers/${params.toString() ? '?' + params.toString() : ''}`;
+
+    $.get(url)
+        .done(function(data) {
+            allHostComputers = data.results || data;
+            applyFilters();
+        })
+        .fail(function(xhr) {
+            showAlert(`Ошибка загрузки: ${xhr.responseJSON?.detail || 'Неизвестная ошибка'}`, 'danger');
+        })
+        .always(function() {
+            showLoading(false);
+        });
+}
+
+function applyFilters() {
+    const hostnameFilter = $('#hostnameFilter').val().toLowerCase();
+    const ipFilter = $('#ipFilter').val().toLowerCase();
+    const departmentFilter = parseInt($('#departmentFilter').val()) || 0;
+    const hasDepartmentFilter = $('#hasDepartmentFilter').val();
+    const searchFilter = $('#searchFilter').val().toLowerCase();
+
+    filteredHostComputers = allHostComputers.filter(host => {
+        // Фильтр по имени хоста
+        if (hostnameFilter && !host.hostname.toLowerCase().includes(hostnameFilter)) return false;
+
+        // Фильтр по IP-адресу
+        if (ipFilter && !host.ip_address.toLowerCase().includes(ipFilter)) return false;
+
+        // Фильтр по ID отдела
+        if (departmentFilter && host.department !== departmentFilter) return false;
+
+        // Фильтр по наличию отдела
+        if (hasDepartmentFilter === 'true' && !host.department) return false;
+        if (hasDepartmentFilter === 'false' && host.department) return false;
+
+        // Универсальный поиск
+        if (searchFilter) {
+            const searchableText = [
+                host.hostname || '',
+                host.ip_address || '',
+                host.mac_address || '',
+                host.department_room?.toString() || '',
+                host.department?.toString() || ''
+            ].join(' ').toLowerCase();
+
+            if (!searchableText.includes(searchFilter)) return false;
+        }
+
+        return true;
+    });
+
+    currentPage = 1;
+    renderHostComputers();
+    updatePagination();
+    updateTableInfo();
+}
+
+function renderHostComputers() {
+    const tbody = $('#host-computers-body');
+    tbody.children().not('#loading-row').remove();
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const hostsToShow = filteredHostComputers.slice(startIndex, endIndex);
+
+    if (!hostsToShow.length) {
+        tbody.append(`
+            <tr>
+                <td colspan="6" class="text-center py-4">
+                    <i class="bi bi-info-circle display-6 text-muted mb-3"></i>
+                    <p class="h5 text-muted">Хост-компьютеры не найдены</p>
+                    <p class="text-muted">Попробуйте изменить параметры фильтрации</p>
+                </td>
+            </tr>
+        `);
+        return;
+    }
+
+    hostsToShow.forEach(host => {
+        const departmentInfo = host.department_room ? `Комната ${host.department_room}` : 'Не назначен';
+        const departmentName = host.department ? `Отдел ${host.department}` : 'Не назначен';
+        const hasDepartment = !!host.department;
+
+        tbody.append(`
+            <tr data-host-id="${host.id}">
+                <td>
+                    <i class="bi bi-pc-display me-2"></i>
+                    <strong>${host.hostname}</strong>
+                </td>
+                <td>
+                    <code>${host.ip_address}</code>
+                    <div class="small text-muted">${host.mac_address}</div>
+                </td>
+                <td><code>${host.mac_address}</code></td>
+                <td>
+                    ${hasDepartment ? `
+                    <span class="badge bg-primary">${departmentName}</span>
+                    ` : '<span class="badge bg-secondary">Не назначен</span>'}
+                </td>
+                <td>${departmentInfo}</td>
+                <td class="text-end">
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-outline-info" onclick="viewHostComputerDetails(${host.id})"
+                                title="Детали">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="refreshHostComputer(${host.id})"
+                                title="Обновить">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `);
+    });
+}
+
+function updatePagination() {
+    const pagination = $('#pagination-controls');
+    pagination.empty();
+
+    const totalPages = Math.ceil(filteredHostComputers.length / itemsPerPage);
+
+    if (totalPages <= 1) return;
+
+    let html = '<ul class="pagination pagination-sm mb-0">';
+
+    // Предыдущая страница
+    html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="goToPage(${currentPage - 1}); return false;">Назад</a>
+    </li>`;
+
+    // Страницы
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<li class="page-item ${currentPage === i ? 'active' : ''}">
+            <a class="page-link" href="#" onclick="goToPage(${i}); return false;">${i}</a>
+        </li>`;
+    }
+
+    // Следующая страница
+    html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="goToPage(${currentPage + 1}); return false;">Вперед</a>
+    </li>`;
+
+    html += '</ul>';
+    pagination.html(html);
+}
+
+function goToPage(page) {
+    if (page < 1 || page > Math.ceil(filteredHostComputers.length / itemsPerPage)) return;
+    currentPage = page;
+    renderHostComputers();
+    updatePagination();
+    updateTableInfo();
+}
+
+function updateTableInfo() {
+    const total = filteredHostComputers.length;
+    const start = Math.min((currentPage - 1) * itemsPerPage + 1, total);
+    const end = Math.min(currentPage * itemsPerPage, total);
+
+    let info = `Показано ${start}-${end} из ${total} записей`;
+    if (total === 0) {
+        info = 'Нет данных для отображения';
+    }
+
+    $('#pagination-info').text(info);
+    $('#total-count').text(`Всего: ${total}`);
+}
+
+function viewHostComputerDetails(id) {
+    showLoadingModal();
+
+    $.get(`/api/host-computers/${id}/details/`)
+        .done(function(host) {
+            const hasDepartment = !!host.department;
+            const departmentInfo = host.department_details || {};
+
+            let content = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="bi bi-pc-display me-2"></i>Сетевая информация</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tr><th width="40%">Имя хоста:</th><td><strong>${host.hostname}</strong></td></tr>
+                                    <tr><th>IP-адрес:</th><td><code>${host.ip_address}</code></td></tr>
+                                    <tr><th>MAC-адрес:</th><td><code>${host.mac_address}</code></td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="bi bi-building me-2"></i>Привязка к отделу</h6>
+                            </div>
+                            <div class="card-body">
+            `;
+
+            if (hasDepartment && departmentInfo.room_number) {
+                content += `
+                    <table class="table table-sm">
+                        <tr><th>Отдел:</th><td><span class="badge bg-primary">ID: ${host.department}</span></td></tr>
+                        <tr><th>Номер комнаты:</th><td>${departmentInfo.room_number}</td></tr>
+                        <tr><th>Внутренний телефон:</th><td>${departmentInfo.internal_phone}</td></tr>
+                        <tr><th>Количество сотрудников:</th><td>${departmentInfo.employee_count}</td></tr>
+                    </table>
+                `;
+            } else {
+                content += `
+                    <div class="text-center py-3">
+                        <i class="bi bi-building-slash display-6 text-muted mb-3"></i>
+                        <p class="h5 text-muted">Не привязан к отделу</p>
+                        <p class="text-muted">Хост-компьютер можно назначить отделу в административной панели</p>
+                    </div>
+                `;
+            }
+
+            content += `</div></div></div></div>`;
+
+            $('#host-computer-detail-content').html(content);
+            $('#hostComputerDetailModal').modal('show');
+        })
+        .fail(function(xhr) {
+            showAlert(`Ошибка загрузки деталей: ${xhr.responseJSON?.detail || 'Неизвестная ошибка'}`, 'danger');
+        })
+        .always(function() {
+            hideLoadingModal();
+        });
+}
+
+function resetFilters() {
+    $('#hostnameFilter').val('');
+    $('#ipFilter').val('');
+    $('#departmentFilter').val('');
+    $('#hasDepartmentFilter').val('');
+    $('#searchFilter').val('');
+    loadAllHostComputers();
+}
+
+function refreshTable() {
+    applyFilters();
+}
+
+function refreshHostComputer(id) {
+    $.get(`/api/host-computers/${id}/`)
+        .done(function() {
+            showAlert('Данные хост-компьютера обновлены', 'success');
+            loadAllHostComputers();
+        })
+        .fail(function(xhr) {
+            showAlert('Ошибка обновления', 'danger');
+        });
+}
+
+function refreshAllHostComputers() {
+    loadAllHostComputers();
+    showAlert('Все данные хост-компьютеров обновлены', 'success');
+}
+
+function exportHostComputers() {
+    const params = new URLSearchParams();
+    const hostname = $('#hostnameFilter').val();
+    const ip = $('#ipFilter').val();
+
+    if (hostname) params.append('hostname', hostname);
+    if (ip) params.append('ip_address', ip);
+
+    const url = `/api/host-computers/export/?${params.toString()}`;
+    window.open(url, '_blank');
+}
+
+function showLoading(show) {
+    $('#loading-row').toggle(show);
+    if (show) {
+        $('#host-computers-body').children().not('#loading-row').hide();
+    } else {
+        $('#host-computers-body').children().not('#loading-row').show();
+    }
+}
+
+function showLoadingModal() {
+    $('#host-computer-detail-content').html(`
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+            <p class="mt-2 text-muted">Загрузка данных...</p>
+        </div>
+    `);
+}
+
+function hideLoadingModal() {
+    // Автоматически скрывается при загрузке данных
+}
+
+function showAlert(message, type) {
+    const alert = $(`
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `);
+
+    $('.alert-dismissible').remove();
+    $('.container-fluid').prepend(alert);
+
+    setTimeout(() => {
+        alert.alert('close');
+    }, 5000);
+}
+</script>
+{% endblock %}
