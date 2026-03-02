@@ -1,12 +1,9 @@
-# --- Stage 1: Builder ---
+# ---------- Builder ----------
 FROM python:3.13-slim AS builder
 
-WORKDIR /app
+WORKDIR /install
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -16,20 +13,21 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 
-# --- Stage 2: Final ---
+# ---------- Final ----------
 FROM python:3.13-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
-    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /install /usr/local
 COPY . .
 
-RUN useradd -m -u 1000 django && chown -R django:django /app
+RUN useradd -m django \
+    && chown -R django:django /app
+
 USER django
 
 EXPOSE 8000
