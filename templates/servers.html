@@ -1,0 +1,116 @@
+<!-- templates/servers.html -->
+{% extends 'base.html' %}
+
+{% block title %}Серверы - Локальная компьютерная сеть{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h1><i class="bi bi-server"></i> Управление серверами</h1>
+                <p class="lead">Просмотр и управление серверами в локальной сети</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Таблица серверов -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Список серверов</h5>
+                    <button class="btn btn-sm btn-primary" onclick="loadServers()">
+                        <i class="bi bi-arrow-clockwise"></i> Обновить
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="serversTable" class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Имя хоста</th>
+                                    <th>Порт</th>
+                                    <th>Расположение</th>
+                                    <th>Дата подключения</th>
+                                    <th>Количество сетей</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="servers-body">
+                                <!-- Данные загружаются через JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    loadServers();
+    initializeDataTable();
+});
+
+function initializeDataTable() {
+    $('#serversTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/ru.json'
+        },
+        pageLength: 25
+    });
+}
+
+function loadServers() {
+    $.get('/api/servers/', function(data) {
+        const servers = data.results || data;
+        renderServers(servers);
+    });
+}
+
+function renderServers(servers) {
+    const tbody = $('#servers-body');
+    tbody.empty();
+
+    if (servers.length === 0) {
+        tbody.append(`
+            <tr>
+                <td colspan="6" class="text-center text-muted">Нет данных о серверах</td>
+            </tr>
+        `);
+        return;
+    }
+
+    servers.forEach(server => {
+        const networkCount = server.networks_info ? server.networks_info.length : 0;
+        const connectionDate = server.connection_date ? new Date(server.connection_date).toLocaleDateString('ru-RU') : 'Н/Д';
+
+        tbody.append(`
+            <tr>
+                <td>${server.hostname}</td>
+                <td>${server.port}</td>
+                <td>${server.location}</td>
+                <td>${connectionDate}</td>
+                <td>${networkCount}</td>
+                <td class="table-actions">
+                    <button class="btn btn-sm btn-outline-info" onclick="viewServer(${server.id})">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `);
+    });
+}
+
+function viewServer(id) {
+    // В будущем можно добавить детальное представление
+    alert(`Просмотр сервера ID: ${id}`);
+}
+</script>
+{% endblock %}

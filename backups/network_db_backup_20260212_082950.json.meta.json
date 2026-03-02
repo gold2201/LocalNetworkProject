@@ -1,0 +1,11 @@
+{
+  "backup_file": "network_db_backup_20260212_082950.json",
+  "timestamp": "20260212_082950",
+  "format": "json",
+  "size_bytes": 292232,
+  "excluded_models": [
+    "contenttypes",
+    "auth.permission",
+    "sessions"
+  ]
+}
