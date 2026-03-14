@@ -1,7 +1,3 @@
-"""
-Скрипт для восстановления базы данных
-Запуск: python manage.py restore_db <backup_file>
-"""
 import os
 import json
 from django.core.management.base import BaseCommand, CommandError
@@ -23,9 +19,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         backup_file = options['backup_file']
 
-        # Проверяем существование файла
         if not os.path.exists(backup_file):
-            # Проверяем в директории backups
             backup_dir = os.path.join(settings.BASE_DIR, 'backups')
             full_path = os.path.join(backup_dir, backup_file)
             if os.path.exists(full_path):
@@ -35,7 +29,6 @@ class Command(BaseCommand):
 
         self.stdout.write(f'Восстановление из файла: {backup_file}')
 
-        # Проверяем мета-информацию
         meta_file = backup_file + '.meta.json'
         if os.path.exists(meta_file):
             with open(meta_file, 'r', encoding='utf-8') as f:
@@ -44,7 +37,6 @@ class Command(BaseCommand):
             self.stdout.write(f'  Формат: {meta.get("format", "unknown")}')
             self.stdout.write(f'  Включенные таблицы: {len(meta.get("tables_included", []))}')
 
-        # Подтверждение
         if not options['noinput']:
             confirm = input('Восстановление удалит все текущие данные. Продолжить? (yes/no): ')
             if confirm.lower() != 'yes':
@@ -52,17 +44,14 @@ class Command(BaseCommand):
                 return
 
         try:
-            # Очищаем базу данных
             self.stdout.write('Очистка базы данных...')
             call_command('flush', '--noinput')
 
-            # Восстанавливаем из бэкапа
             self.stdout.write('Восстановление данных...')
             call_command('loaddata', backup_file)
 
             self.stdout.write(self.style.SUCCESS('✓ База данных успешно восстановлена'))
 
-            # Показываем статистику
             from django.apps import apps
             self.stdout.write('\nСтатистика после восстановления:')
             for model in apps.get_models():
@@ -74,7 +63,6 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'✗ Ошибка при восстановлении: {str(e)}'))
 
-            # Пытаемся восстановить миграции
             self.stdout.write('Восстановление миграций...')
             try:
                 call_command('migrate')

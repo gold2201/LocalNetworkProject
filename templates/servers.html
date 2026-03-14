@@ -1,4 +1,3 @@
-<!-- templates/servers.html -->
 {% extends 'base.html' %}
 
 {% block title %}Серверы - Локальная компьютерная сеть{% endblock %}
@@ -16,7 +15,6 @@
 </div>
 
 <div class="container-fluid">
-    <!-- Таблица серверов -->
     <div class="row">
         <div class="col-12">
             <div class="card">
@@ -40,7 +38,6 @@
                                 </tr>
                             </thead>
                             <tbody id="servers-body">
-                                <!-- Данные загружаются через JavaScript -->
                             </tbody>
                         </table>
                     </div>
@@ -109,7 +106,6 @@ function renderServers(servers) {
 }
 
 function viewServer(id) {
-    // В будущем можно добавить детальное представление
     alert(`Просмотр сервера ID: ${id}`);
 }
 </script>

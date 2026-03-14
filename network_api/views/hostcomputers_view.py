@@ -9,7 +9,6 @@ from network_api.serializers import HostComputerSerializer
 from network_api.mixins import ExportMixin
 
 class HostComputerFilter(django_filters.FilterSet):
-    """Фильтры для хост-компьютеров"""
     hostname = django_filters.CharFilter(field_name='hostname', lookup_expr='icontains')
     ip_address = django_filters.CharFilter(field_name='ip_address', lookup_expr='icontains')
     mac_address = django_filters.CharFilter(field_name='mac_address', lookup_expr='icontains')
@@ -23,7 +22,6 @@ class HostComputerFilter(django_filters.FilterSet):
         fields = ['hostname', 'ip_address', 'mac_address', 'department']
 
     def filter_search(self, queryset, name, value):
-        """Универсальный поиск"""
         if value:
             return queryset.filter(
                 Q(hostname__icontains=value) |
@@ -35,7 +33,6 @@ class HostComputerFilter(django_filters.FilterSet):
 
 
 class HostComputerViewSet(ExportMixin, viewsets.ModelViewSet):
-    """ViewSet для хост-компьютеров"""
     queryset = HostComputer.objects.select_related('department').order_by('hostname')
     serializer_class = HostComputerSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -43,20 +40,17 @@ class HostComputerViewSet(ExportMixin, viewsets.ModelViewSet):
     filterset_class = HostComputerFilter
 
     def list(self, request, *args, **kwargs):
-        """Список хост-компьютеров (без пагинации для UI)"""
         queryset = self.filter_queryset(self.get_queryset())
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=['get'])
     def details(self, request, pk=None):
-        """Детальная информация о хост-компьютере"""
         host = self.get_object()
         serializer = self.get_serializer(host)
 
         data = serializer.data
 
-        # Добавляем дополнительную информацию
         if host.department:
             data['department_details'] = {
                 'room_number': host.department.room_number,
@@ -68,7 +62,6 @@ class HostComputerViewSet(ExportMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def unassigned(self, request):
-        """Хост-компьютеры без привязки к отделу"""
         queryset = self.get_queryset().filter(department__isnull=True)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)

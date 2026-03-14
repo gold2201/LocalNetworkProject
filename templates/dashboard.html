@@ -1,4 +1,3 @@
-<!-- templates/dashboard.html -->
 {% extends 'base.html' %}
 
 {% block title %}Дашборд - Локальная компьютерная сеть{% endblock %}
@@ -16,7 +15,6 @@
 </div>
 
 <div class="container-fluid">
-    <!-- Статистика -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card stat-card">
@@ -83,7 +81,6 @@
         </div>
     </div>
 
-    <!-- Быстрые действия -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -118,7 +115,6 @@
         </div>
     </div>
 
-    <!-- Последние компьютеры -->
     <div class="row">
         <div class="col-12">
             <div class="card">
@@ -128,7 +124,7 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table id="recentComputersTable" class="table table-striped">
+                        <table class="table table-striped">
                             <thead>
                                 <tr>
                                     <th>Модель</th>
@@ -139,7 +135,6 @@
                                 </tr>
                             </thead>
                             <tbody id="recent-computers-body">
-                                <!-- Данные загружаются через JavaScript -->
                             </tbody>
                         </table>
                     </div>
@@ -153,41 +148,80 @@
 {% block scripts %}
 <script>
 $(document).ready(function() {
-    // Загрузка статистики
-    function loadStats() {
-        // Загрузка количества отделов
-        $.get('/api/departments/', function(data) {
-            $('#departments-count').text(data.count || data.length);
+    loadStats();
+    loadRecentComputers();
+});
+
+function loadStats() {
+    $.get('/api/departments/')
+        .done(function(data) {
+            if (data.count !== undefined) {
+                $('#departments-count').text(data.count);
+            } else if (Array.isArray(data)) {
+                $('#departments-count').text(data.length);
+            }
+        })
+        .fail(function() {
+            $('#departments-count').text('Ошибка');
         });
 
-        // Загрузка количества компьютеров
-        $.get('/api/computers/', function(data) {
-            $('#computers-count').text(data.count || data.length);
+    $.get('/api/computers/')
+        .done(function(data) {
+            if (data.count !== undefined) {
+                $('#computers-count').text(data.count);
+            } else if (Array.isArray(data)) {
+                $('#computers-count').text(data.length);
+            }
+        })
+        .fail(function() {
+            $('#computers-count').text('Ошибка');
         });
 
-        // Загрузка количества пользователей
-        $.get('/api/users/', function(data) {
-            $('#users-count').text(data.count || data.length);
+    $.get('/api/users/')
+        .done(function(data) {
+            if (data.count !== undefined) {
+                $('#users-count').text(data.count);
+            } else if (Array.isArray(data)) {
+                $('#users-count').text(data.length);
+            }
+        })
+        .fail(function() {
+            $('#users-count').text('Ошибка');
         });
 
-        // Загрузка количества сетей
-        $.get('/api/networks/', function(data) {
-            $('#networks-count').text(data.count || data.length);
+    $.get('/api/analytics/network_usage/')
+        .done(function(data) {
+            $('#networks-count').text(data.length || 0);
+        })
+        .fail(function() {
+            $('#networks-count').text('Ошибка');
         });
-    }
+}
 
-    // Загрузка последних компьютеров
-    function loadRecentComputers() {
-        $.get('/api/computers/?limit=5', function(data) {
+function loadRecentComputers() {
+    $.get('/api/computers/?limit=5')
+        .done(function(data) {
             const tbody = $('#recent-computers-body');
             tbody.empty();
 
-            data.results?.slice(0, 5).forEach(computer => {
+            let computers = [];
+            if (data.results) {
+                computers = data.results.slice(0, 5);
+            } else if (Array.isArray(data)) {
+                computers = data.slice(0, 5);
+            }
+
+            if (computers.length === 0) {
+                tbody.append('<tr><td colspan="5" class="text-center text-muted">Нет компьютеров</td></tr>');
+                return;
+            }
+
+            computers.forEach(computer => {
                 tbody.append(`
                     <tr>
-                        <td>${computer.model}</td>
-                        <td>${computer.os}</td>
-                        <td>${computer.serial_number}</td>
+                        <td>${computer.model || 'Неизвестно'}</td>
+                        <td>${computer.os || 'Не указана'}</td>
+                        <td>${computer.serial_number || 'Н/Д'}</td>
                         <td>${computer.department_info || 'Не назначен'}</td>
                         <td>
                             <button class="btn btn-sm btn-outline-primary" onclick="viewComputer(${computer.id})">
@@ -197,16 +231,15 @@ $(document).ready(function() {
                     </tr>
                 `);
             });
+        })
+        .fail(function(xhr) {
+            $('#recent-computers-body').html('<tr><td colspan="5" class="text-center text-danger">Ошибка загрузки данных</td></tr>');
+            console.error('Ошибка загрузки компьютеров:', xhr);
         });
-    }
+}
 
-    function viewComputer(id) {
-        window.location.href = `/computers/#${id}`;
-    }
-
-    // Инициализация
-    loadStats();
-    loadRecentComputers();
-});
+function viewComputer(id) {
+    window.location.href = `/computers/?id=${id}`;
+}
 </script>
 {% endblock %}

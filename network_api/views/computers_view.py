@@ -21,7 +21,6 @@ class ComputerViewSet(ExportMixin, viewsets.ModelViewSet):
             'users', 'software', 'networkcomputer_set'
         )
 
-        # Применяем кастомные фильтры
         search = self.request.query_params.get('search')
         department_id = self.request.query_params.get('department')
         os_filter = self.request.query_params.get('os_filter')
@@ -47,7 +46,6 @@ class ComputerViewSet(ExportMixin, viewsets.ModelViewSet):
         return queryset
 
     def create(self, request, *args, **kwargs):
-        # Проверка уникальности serial_number
         serial_number = request.data.get('serial_number')
         if serial_number and Computer.objects.filter(serial_number=serial_number).exists():
             return Response(
@@ -121,10 +119,8 @@ class ComputerViewSet(ExportMixin, viewsets.ModelViewSet):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def apply_export_filters(self, queryset, request):
-        """Применяем специфичные для Computer фильтры"""
         queryset = super().apply_export_filters(queryset, request)
 
-        # Добавляем фильтры из параметров запроса
         os_filter = request.GET.get('os')
         department_id = request.GET.get('department_id')
 
@@ -137,7 +133,6 @@ class ComputerViewSet(ExportMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def details(self, request, pk=None):
-        """Детальная информация о компьютере"""
         try:
             computer = self.get_queryset().get(pk=pk)
 

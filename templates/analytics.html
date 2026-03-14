@@ -1,4 +1,3 @@
-<!-- templates/analytics.html -->
 {% extends 'base.html' %}
 
 {% block title %}Аналитика - Локальная компьютерная сеть{% endblock %}
@@ -16,7 +15,6 @@
 </div>
 
 <div class="container-fluid">
-    <!-- Кнопки экспорта -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -49,9 +47,7 @@
         </div>
     </div>
 
-    <!-- Аналитические данные -->
     <div class="row">
-        <!-- Статистика отделов -->
         <div class="col-lg-6 mb-4">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -79,7 +75,6 @@
             </div>
         </div>
 
-        <!-- Использование сетей -->
         <div class="col-lg-6 mb-4">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -108,7 +103,6 @@
         </div>
     </div>
 
-    <!-- Расширенные запросы -->
     <div class="row">
         <div class="col-12">
             <div class="card">
@@ -153,7 +147,6 @@ $(document).ready(function() {
     loadDepartmentStats();
     loadNetworkUsage();
 
-    // Показ/скрытие поля вендора
     $('#advancedQueryType').change(function() {
         if ($(this).val() === 'software_by_vendor') {
             $('#vendorFilter').show();
@@ -216,7 +209,6 @@ function runAdvancedQuery() {
         tbody.empty();
 
         if (data.length > 0) {
-            // Создаем заголовки на основе ключей первого элемента
             const headers = Object.keys(data[0]);
             let headerRow = '<tr>';
             headers.forEach(header => {
@@ -225,7 +217,6 @@ function runAdvancedQuery() {
             headerRow += '</tr>';
             thead.append(headerRow);
 
-            // Заполняем данные
             data.forEach(item => {
                 let row = '<tr>';
                 headers.forEach(header => {
@@ -238,7 +229,6 @@ function runAdvancedQuery() {
     });
 }
 
-// Функции экспорта
 function exportDepartmentStats() {
     window.open('/api/analytics/export_department_stats/', '_blank');
 }
@@ -248,7 +238,6 @@ function exportNetworkUsage() {
 }
 
 function exportSoftwareDistribution() {
-    // Добавьте соответствующий endpoint
     window.open('/api/analytics/export_analytics/?query=software_distribution', '_blank');
 }
 

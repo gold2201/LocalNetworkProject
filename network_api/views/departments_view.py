@@ -1,11 +1,9 @@
-# views/department_views.py - ИСПРАВЛЕННАЯ ВЕРСИЯ
-
 from rest_framework import serializers
 from network_api.mixins import ExportMixin
 from network_api.models import Department, HostComputer
 from network_api.serializers import DepartmentSerializer
 
-from django.db.models import Count, F, Q, OuterRef, Subquery
+from django.db.models import Count, Q, OuterRef, Subquery
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
@@ -22,11 +20,9 @@ class DepartmentViewSet(ExportMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Department.objects.all()
 
-        # ✅ ИСПРАВЛЕНО: select_related('hostcomputer') -> prefetch_related('host_computers')
-        # Так как теперь это ForeignKey (один ко многим)
+
         queryset = queryset.prefetch_related('computers', 'host_computers', 'users')
 
-        # Применяем фильтрацию для GET запросов
         if self.request.method == 'GET':
             min_employees = self.request.query_params.get('min_employees')
             search = self.request.query_params.get('search')
@@ -40,13 +36,10 @@ class DepartmentViewSet(ExportMixin, viewsets.ModelViewSet):
                     Q(internal_phone__icontains=search)
                 )
 
-            # ✅ ИСПРАВЛЕНО: получаем IP первого хост-компьютера через подзапрос
-            # Так как теперь может быть несколько хост-компьютеров
             host_computer_ip_subquery = HostComputer.objects.filter(
                 department=OuterRef('pk')
             ).values('ip_address')[:1]
 
-            # Аннотируем для списка и детального просмотра
             queryset = queryset.annotate(
                 computers_count=Count('computers', distinct=True),
                 users_count=Count('users', distinct=True),
@@ -57,7 +50,6 @@ class DepartmentViewSet(ExportMixin, viewsets.ModelViewSet):
         return queryset
 
     def retrieve(self, request, *args, **kwargs):
-        # Используем get_queryset который уже содержит аннотации
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
@@ -65,14 +57,11 @@ class DepartmentViewSet(ExportMixin, viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         print(f"Create request data: {request.data}")
 
-        # Удаляем id из данных если он есть
         data = request.data.copy()
         if 'id' in data:
             del data['id']
 
-        # Преобразуем internal_phone в число если это строка
         if 'internal_phone' in data and isinstance(data['internal_phone'], str):
-            # Удаляем все нецифровые символы
             data['internal_phone'] = int(''.join(filter(str.isdigit, data['internal_phone'])))
 
         serializer = self.get_serializer(data=data)
@@ -104,7 +93,6 @@ class DepartmentViewSet(ExportMixin, viewsets.ModelViewSet):
         if 'id' in data:
             del data['id']
 
-        # Преобразуем internal_phone в число если нужно
         if 'internal_phone' in data and isinstance(data['internal_phone'], str):
             data['internal_phone'] = int(''.join(filter(str.isdigit, data['internal_phone'])))
 
@@ -126,13 +114,11 @@ class DepartmentViewSet(ExportMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
         try:
-            # Используем аннотированный queryset
             department = self.get_queryset().filter(pk=pk).first()
 
             if not department:
                 return Response({'error': 'Department not found'}, status=404)
 
-            # ✅ ИСПРАВЛЕНО: используем аннотированные поля
             return Response({
                 'department_id': department.id,
                 'room_number': department.room_number,
@@ -158,7 +144,6 @@ class DepartmentViewSet(ExportMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def host_computers(self, request, pk=None):
-        """Получить все хост-компьютеры отдела"""
         try:
             department = self.get_object()
             hosts = department.host_computers.all()
@@ -181,7 +166,6 @@ class DepartmentViewSet(ExportMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def users(self, request, pk=None):
-        """Получить всех пользователей отдела"""
         try:
             department = self.get_object()
             users = department.users.all()

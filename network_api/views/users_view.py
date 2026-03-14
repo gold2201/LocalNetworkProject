@@ -3,7 +3,7 @@ from network_api.models import User
 from network_api.serializers import UserSerializer
 
 
-from django.db.models import Count, F, Q, Prefetch
+from django.db.models import Count, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
@@ -19,7 +19,6 @@ class UserViewSet(ExportMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = User.objects.select_related('department').prefetch_related('computers')
 
-        # Применяем кастомные фильтры из параметров запроса
         search = self.request.query_params.get('search')
         department_id = self.request.query_params.get('department')
         position_id = self.request.query_params.get('position_id')
@@ -47,7 +46,6 @@ class UserViewSet(ExportMixin, viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         print(f"User create request: {request.data}")
 
-        # Проверка обязательных полей
         required_fields = ['full_name', 'email', 'phone', 'position_id']
         for field in required_fields:
             if field not in request.data:
@@ -56,7 +54,6 @@ class UserViewSet(ExportMixin, viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        # Проверка уникальности email
         email = request.data.get('email')
         if email and User.objects.filter(email=email).exists():
             return Response(
@@ -81,7 +78,6 @@ class UserViewSet(ExportMixin, viewsets.ModelViewSet):
         instance = self.get_object()
         email = request.data.get('email')
 
-        # Проверка уникальности email при обновлении
         if email and email != instance.email:
             if User.objects.filter(email=email).exists():
                 return Response(
@@ -127,7 +123,6 @@ class UserViewSet(ExportMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def statistics(self, request):
-        """Статистика по пользователям"""
         stats = {
             'total': User.objects.count(),
             'by_position': list(User.objects.values('position_id').annotate(count=Count('id'))),

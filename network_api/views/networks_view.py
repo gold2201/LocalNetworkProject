@@ -1,7 +1,7 @@
-# networks_view.py
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 import django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Count, Avg, Max, Min
@@ -10,28 +10,29 @@ from network_api.serializers import NetworkSerializer, NetworkComputerSerializer
 from network_api.mixins import ExportMixin
 
 
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class NetworkFilter(django_filters.FilterSet):
-    """Фильтры для сетей"""
     vlan = django_filters.NumberFilter(field_name='vlan')
     ip_range = django_filters.CharFilter(field_name='ip_range', lookup_expr='icontains')
     equipment_type = django_filters.CharFilter(field_name='equipment__type', lookup_expr='icontains')
     has_computers = django_filters.BooleanFilter(method='filter_has_computers')
-    search = django_filters.CharFilter(method='filter_search', required=False)
+    search = django_filters.CharFilter(method='filter_search')
 
     class Meta:
         model = Network
         fields = ['vlan', 'ip_range', 'equipment']
 
     def filter_has_computers(self, queryset, name, value):
-        """Фильтр по наличию подключенных компьютеров"""
-        if value is True:
-            return queryset.filter(networkcomputer_set__isnull=False).distinct()
-        elif value is False:
-            return queryset.filter(networkcomputer_set__isnull=True).distinct()
-        return queryset
+        if value:
+            return queryset.annotate(comp_count=Count('networkcomputer')).filter(comp_count__gt=0)
+        return queryset.annotate(comp_count=Count('networkcomputer')).filter(comp_count=0)
 
     def filter_search(self, queryset, name, value):
-        """Универсальный поиск по нескольким полям"""
         if value:
             return queryset.filter(
                 Q(vlan__icontains=value) |
@@ -43,43 +44,29 @@ class NetworkFilter(django_filters.FilterSet):
 
 
 class NetworkReadOnlyViewSet(ExportMixin, viewsets.ReadOnlyModelViewSet):
-    """
-    ViewSet для чтения сетевых подключений.
-    Пагинация реализована на стороне UI.
-    """
     queryset = Network.objects.select_related('equipment').prefetch_related(
         'networkcomputer_set__computer'
+    ).annotate(
+        computers_count=Count('networkcomputer', distinct=True)
     ).order_by('vlan')
 
     serializer_class = NetworkSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = NetworkFilter
-
-    def list(self, request, *args, **kwargs):
-        """
-        Переопределяем list, чтобы отключить пагинацию по умолчанию
-        и возвращать все данные для клиентской пагинации.
-        """
-        queryset = self.filter_queryset(self.get_queryset())
-
-        # Отключаем пагинацию - возвращаем все данные
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+    pagination_class = StandardResultsSetPagination
 
     @action(detail=False, methods=['get'])
     def statistics(self, request):
-        """Получение статистики по сетям"""
         stats = Network.objects.aggregate(
             total_networks=Count('id'),
             average_vlan=Avg('vlan'),
             max_vlan=Max('vlan'),
             min_vlan=Min('vlan'),
             networks_with_equipment=Count('equipment', distinct=True),
-            total_computers_connected=Count('networkcomputer_set', distinct=True)
+            total_computers_connected=Count('networkcomputer__computer', distinct=True)
         )
 
-        # Распределение по VLAN для статистики
         vlan_distribution = list(
             Network.objects.values('vlan')
             .annotate(count=Count('id'))
@@ -91,7 +78,6 @@ class NetworkReadOnlyViewSet(ExportMixin, viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['get'])
     def computers(self, request, pk=None):
-        """Получить все компьютеры в сети (без пагинации)"""
         network = self.get_object()
         network_computers = NetworkComputer.objects.filter(
             network=network
@@ -102,14 +88,12 @@ class NetworkReadOnlyViewSet(ExportMixin, viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['get'])
     def details(self, request, pk=None):
-        """Детальная информация о сети"""
         network = self.get_object()
         serializer = self.get_serializer(network)
 
         data = serializer.data
         data['connected_computers_count'] = network.networkcomputer_set.count()
 
-        # Информация об оборудовании
         if network.equipment:
             data['equipment_info'] = {
                 'type': network.equipment.type,
@@ -120,7 +104,6 @@ class NetworkReadOnlyViewSet(ExportMixin, viewsets.ReadOnlyModelViewSet):
         else:
             data['equipment_info'] = None
 
-        # Последние 5 компьютеров
         recent_computers = network.networkcomputer_set.select_related(
             'computer'
         ).order_by('-id')[:5]

@@ -1,7 +1,4 @@
-# management/commands/backup_db.py
-
 import os
-import datetime
 import json
 from django.core.management.base import BaseCommand
 from django.core.management import call_command
@@ -27,7 +24,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--exclude',
-            nargs='+',  # ✅ ВАЖНО: собирает все аргументы в список
+            nargs='+',
             default=[],
             help='Исключить таблицы из бэкапа'
         )
@@ -42,24 +39,20 @@ class Command(BaseCommand):
 
         self.stdout.write(f'Создание резервной копии: {filename}')
 
-        # ✅ ПРАВИЛЬНО: формируем список exclude моделей
         exclude_models = []
 
-        # Всегда исключаем системные таблицы
         exclude_models.extend([
             'contenttypes',
             'auth.permission',
             'sessions'
         ])
 
-        # Добавляем пользовательские исключения
         if options['exclude']:
             exclude_models.extend(options['exclude'])
 
         self.stdout.write(f'  Исключаемые модели: {", ".join(exclude_models)}')
 
         try:
-            # ✅ ПРАВИЛЬНО: передаем список в аргумент --exclude
             with open(filepath, 'w', encoding='utf-8') as f:
                 call_command(
                     'dumpdata',
@@ -70,14 +63,12 @@ class Command(BaseCommand):
                     stdout=f
                 )
 
-            self.stdout.write(self.style.SUCCESS(f'✅ Резервная копия создана: {filename}'))
+            self.stdout.write(self.style.SUCCESS(f'[+] Резервная копия создана: {filename}'))
 
-            # Информация о файле
             file_size = os.path.getsize(filepath)
             size_mb = file_size / (1024 * 1024)
             self.stdout.write(f'  Размер: {size_mb:.2f} MB')
 
-            # Мета-информация
             meta = {
                 'backup_file': filename,
                 'timestamp': timestamp,
@@ -93,5 +84,5 @@ class Command(BaseCommand):
             self.stdout.write(f'  Мета-файл: {meta_filepath}')
 
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f'❌ Ошибка при создании бэкапа: {str(e)}'))
+            self.stdout.write(self.style.ERROR(f'[-] Ошибка при создании бэкапа: {str(e)}'))
             raise

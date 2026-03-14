@@ -1,7 +1,4 @@
-# management/commands/generate_test_data.py (исправленная версия)
-
 from django.core.management.base import BaseCommand
-from django.core.management import call_command
 from network_api.models import (
     Computer, Department, User, Software, Equipment,
     Network, HostComputer, UserComputer, SoftwareComputer,
@@ -23,60 +20,48 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options['clear']:
-            self.stdout.write('🧹 Очистка данных...')
+            self.stdout.write('Очистка данных...')
             self._clear_data()
 
-        self.stdout.write('🚀 Начало генерации...')
+        self.stdout.write('Начало генерации...')
 
-        # 1. Отделы
         departments = self._create_departments(15)
-        self.stdout.write(f'✅ Отделы: {len(departments)}')
+        self.stdout.write(f'[+] Отделы: {len(departments)}')
 
-        # 2. Оборудование (СПРАВОЧНИК -必须先创建!)
         equipment = self._create_equipment()
-        self.stdout.write(f'✅ Оборудование: {len(equipment)}')
+        self.stdout.write(f'[+] Оборудование: {len(equipment)}')
 
-        # 3. Сети (теперь equipment гарантированно есть)
         networks = self._create_networks(20, equipment)
-        self.stdout.write(f'✅ Сети: {len(networks)}')
+        self.stdout.write(f'[+] Сети: {len(networks)}')
 
-        # 4. Компьютеры
         computers = self._create_computers(options['computers'], departments)
-        self.stdout.write(f'✅ Компьютеры: {len(computers)}')
+        self.stdout.write(f'[+] Компьютеры: {len(computers)}')
 
-        # 5. Пользователи
         users = self._create_users(300, departments)
-        self.stdout.write(f'✅ Пользователи: {len(users)}')
+        self.stdout.write(f'[+] Пользователи: {len(users)}')
 
-        # 6. Связи пользователь-компьютер
         uc_count = self._create_user_computers(users, computers)
-        self.stdout.write(f'✅ Связи User-Computer: {uc_count}')
+        self.stdout.write(f'[+] Связи User-Computer: {uc_count}')
 
-        # 7. Подключения компьютеров к сетям
         nc_count = self._create_network_computers(computers, networks)
-        self.stdout.write(f'✅ Связи Network-Computer: {nc_count}')
+        self.stdout.write(f'[+] Связи Network-Computer: {nc_count}')
 
-        # 8. Серверы
         servers = self._create_servers(10)
-        self.stdout.write(f'✅ Серверы: {len(servers)}')
+        self.stdout.write(f'[+] Серверы: {len(servers)}')
 
-        # 9. Связи сервер-сеть
         sn_count = self._create_server_networks(servers, networks)
-        self.stdout.write(f'✅ Связи Server-Network: {sn_count}')
+        self.stdout.write(f'[+] Связи Server-Network: {sn_count}')
 
-        # 10. Хост-компьютеры
         hosts = self._create_host_computers(25, departments)
-        self.stdout.write(f'✅ Хост-компьютеры: {len(hosts)}')
+        self.stdout.write(f'[+] Хост-компьютеры: {len(hosts)}')
 
-        # 11. ПО и установки
         software = self._create_software()
         sw_count = self._install_software(computers, software)
-        self.stdout.write(f'✅ Установки ПО: {sw_count}')
+        self.stdout.write(f'[+] Установки ПО: {sw_count}')
 
-        self.stdout.write(self.style.SUCCESS('\n🎉 Генерация завершена!'))
+        self.stdout.write(self.style.SUCCESS('\n[+] Генерация завершена!'))
 
     def _clear_data(self):
-        """Очистка данных в правильном порядке"""
         NetworkComputer.objects.all().delete()
         SoftwareComputer.objects.all().delete()
         UserComputer.objects.all().delete()
@@ -87,12 +72,8 @@ class Command(BaseCommand):
         Server.objects.all().delete()
         HostComputer.objects.all().delete()
         Department.objects.all().delete()
-        # Не удаляем справочники!
-        # Equipment.objects.all().delete()
-        # Software.objects.all().delete()
 
     def _create_equipment(self):
-        """Создание оборудования"""
         equipment_list = [
             {'type': 'Cisco Catalyst 2960', 'bandwidth': 1000, 'port_count': 24, 'setup_date': date(2023, 1, 15)},
             {'type': 'Cisco Catalyst 9300', 'bandwidth': 10000, 'port_count': 48, 'setup_date': date(2023, 3, 20)},
@@ -115,11 +96,10 @@ class Command(BaseCommand):
         return equipment_objs
 
     def _create_networks(self, count, equipment):
-        """Создание сетей - ИСПРАВЛЕНО: всегда есть оборудование"""
         networks = []
 
         if not equipment:
-            self.stdout.write(self.style.ERROR('❌ Нет оборудования для создания сетей!'))
+            self.stdout.write(self.style.ERROR('[-] Нет оборудования для создания сетей!'))
             return networks
 
         for i in range(count):
@@ -130,7 +110,7 @@ class Command(BaseCommand):
                 subnet_mask='255.255.255.0',
                 vlan=vlan,
                 ip_range=f'192.168.{third_octet}.0/24',
-                equipment=random.choice(equipment)  # ✅ Всегда выбираем оборудование
+                equipment=random.choice(equipment)
             )
             networks.append(network)
 
@@ -179,7 +159,7 @@ class Command(BaseCommand):
 
     def _create_user_computers(self, users, computers):
         count = 0
-        for user in users[:100]:  # Ограничиваем для производительности
+        for user in users[:100]:
             num = random.randint(0, 2)
             assigned = random.sample(computers, min(num, len(computers)))
             for comp in assigned:
@@ -231,14 +211,11 @@ class Command(BaseCommand):
         return count
 
     def _create_host_computers(self, count, departments):
-        """Создание хост-компьютеров - ИСПРАВЛЕНО для ForeignKey"""
         hosts = []
 
         for i in range(count):
-            # Теперь можно назначать несколько хост-компьютеров на один отдел
             department = random.choice(departments) if departments and random.random() > 0.5 else None
 
-            # Генерируем уникальный MAC
             mac = ':'.join([f'{random.randint(0, 255):02x}' for _ in range(6)])
 
             host = HostComputer.objects.create(
@@ -252,7 +229,6 @@ class Command(BaseCommand):
         return hosts
 
     def _create_software(self):
-        """Создание ПО (справочник)"""
         software_list = [
             {'name': 'Windows 10 Pro', 'version': '22H2', 'license': 'Commercial', 'vendor': 'Microsoft'},
             {'name': 'Office 2021', 'version': '2021', 'license': 'Commercial', 'vendor': 'Microsoft'},

@@ -1,4 +1,3 @@
-<!-- templates/users.html -->
 {% extends 'base.html' %}
 
 {% block title %}Пользователи - Локальная компьютерная сеть{% endblock %}
@@ -16,7 +15,8 @@
 </div>
 
 <div class="container-fluid">
-    <!-- Фильтры и действия -->
+    <div id="alert-container"></div>
+
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -36,23 +36,29 @@
                                 <option value="1">Руководитель</option>
                                 <option value="2">Заместитель</option>
                                 <option value="3">Сотрудник</option>
+                                <option value="4">Техник</option>
+                                <option value="5">Администратор</option>
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <button class="btn btn-primary" onclick="loadUsers()">
-                                <i class="bi bi-search"></i> Применить
-                            </button>
-                            <button class="btn btn-secondary" onclick="resetFilters()">
-                                <i class="bi bi-arrow-clockwise"></i> Сбросить
-                            </button>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary flex-fill" onclick="applyFilters()">
+                                    <i class="bi bi-search"></i> Применить
+                                </button>
+                                <button class="btn btn-secondary flex-fill" onclick="resetFilters()">
+                                    <i class="bi bi-arrow-clockwise"></i> Сбросить
+                                </button>
+                            </div>
                         </div>
-                        <div class="col-md-2 text-end">
-                            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#userModal">
-                                <i class="bi bi-plus-circle"></i> Добавить
-                            </button>
-                            <button class="btn export-btn" onclick="exportUsers()">
-                                <i class="bi bi-download"></i> Экспорт
-                            </button>
+                        <div class="col-md-2">
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-success flex-fill" onclick="showAddModal()">
+                                    <i class="bi bi-plus-circle"></i> Добавить
+                                </button>
+                                <button class="btn btn-info flex-fill" onclick="exportUsers()">
+                                    <i class="bi bi-download"></i> Экспорт
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -60,7 +66,6 @@
         </div>
     </div>
 
-    <!-- Таблица пользователей -->
     <div class="row">
         <div class="col-12">
             <div class="card">
@@ -72,6 +77,7 @@
                         <table id="usersTable" class="table table-striped table-hover" style="width:100%">
                             <thead>
                                 <tr>
+                                    <th>ID</th>
                                     <th>ФИО</th>
                                     <th>Email</th>
                                     <th>Телефон</th>
@@ -83,7 +89,6 @@
                                 </tr>
                             </thead>
                             <tbody id="users-body">
-                                <!-- Данные загружаются через JavaScript -->
                             </tbody>
                         </table>
                     </div>
@@ -93,7 +98,6 @@
     </div>
 </div>
 
-<!-- Модальное окно для добавления/редактирования -->
 <div class="modal fade" id="userModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -103,6 +107,7 @@
             </div>
             <div class="modal-body">
                 <form id="userForm">
+                    {% csrf_token %}
                     <input type="hidden" id="userId">
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -123,14 +128,16 @@
                             <div class="invalid-feedback" id="phoneError">Введите телефон</div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="position_id" class="form-label">ID должности *</label>
+                            <label for="position_id" class="form-label">Должность *</label>
                             <select class="form-select" id="position_id" required>
+                                <option value="">Выберите должность</option>
                                 <option value="1">Руководитель</option>
                                 <option value="2">Заместитель</option>
-                                <option value="3" selected>Сотрудник</option>
+                                <option value="3">Сотрудник</option>
                                 <option value="4">Техник</option>
                                 <option value="5">Администратор</option>
                             </select>
+                            <div class="invalid-feedback" id="position_idError">Выберите должность</div>
                         </div>
                     </div>
                     <div class="row">
@@ -150,12 +157,52 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="userDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userDetailModalTitle">Детальная информация о пользователе</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="userDetailBody">
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <p class="mt-2">Загрузка данных...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Вы уверены, что хотите удалить этого пользователя?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">Удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-let users = [];
 let departments = [];
+let currentUserId = null;
 let dataTable = null;
 
 function getCookie(name) {
@@ -177,93 +224,110 @@ const csrftoken = getCookie('csrftoken');
 
 $(document).ready(function() {
     loadDepartments();
-    loadUsers();
+    initializeDataTable();
+
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 });
 
 function initializeDataTable() {
-    if (dataTable) {
-        dataTable.destroy();
-    }
-
     dataTable = $('#usersTable').DataTable({
+        processing: true,
+        serverSide: true,
+        searching: false,
+
+        ajax: {
+            url: '/api/users/',
+            type: 'GET',
+            data: function(d) {
+                return {
+                    offset: d.start,
+                    limit: d.length,
+                    search: d.search.value,
+                    search_custom: $('#searchInput').val(),
+                    department: $('#departmentFilter').val(),
+                    position_id: $('#positionFilter').val(),
+                    ordering: getOrdering(d)
+                };
+            },
+            dataSrc: function(json) {
+                json.recordsTotal = json.count || 0;
+                json.recordsFiltered = json.count || 0;
+                return json.results || [];
+            }
+        },
         language: {
             url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/ru.json'
         },
         pageLength: 25,
-        order: [[0, 'asc']], // Сортировка по ФИО по умолчанию
+        order: [[1, 'asc']],
+        columns: [
+            { data: 'id' },
+            { data: 'full_name' },
+            { data: 'email' },
+            { data: 'phone' },
+            {
+                data: 'position_id',
+                render: function(data) {
+                    return getPositionName(data);
+                }
+            },
+            {
+                data: 'department_room',
+                render: function(data) {
+                    return data || 'Не назначен';
+                }
+            },
+            {
+                data: 'computers_info',
+                render: function(data) {
+                    return (data && data.length) || 0;
+                }
+            },
+            {
+                data: 'can_manage_network',
+                render: function(data) {
+                    return data ? 'Да' : 'Нет';
+                }
+            },
+            {
+                data: 'id',
+                render: function(data) {
+                    return `
+                        <div class="table-actions">
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="editUser(${data})" title="Редактировать" data-bs-toggle="tooltip">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger me-1" onclick="showDeleteConfirm(${data})" title="Удалить" data-bs-toggle="tooltip">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-info" onclick="viewUser(${data})" title="Просмотр" data-bs-toggle="tooltip">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    `;
+                },
+                orderable: false,
+                searchable: false
+            }
+        ],
         columnDefs: [
-            { orderable: false, targets: 7 } // Отключаем сортировку для столбца с действиями
+            { orderable: false, targets: [7, 8] },
+            { searchable: false, targets: [0, 5, 6, 7, 8] }
         ]
     });
 }
 
-function loadDepartments() {
-    $.get('/api/departments/', function(data) {
-        departments = data.results || data;
-        const select = $('#departmentFilter, #department');
-        select.empty();
-        select.append('<option value="">Все отделы</option>');
-        departments.forEach(dept => {
-            select.append(`<option value="${dept.id}">Комната ${dept.room_number}</option>`);
-        });
-    });
-}
-
-function loadUsers() {
-    const search = $('#searchInput').val();
-    const department = $('#departmentFilter').val();
-    const position = $('#positionFilter').val();
-
-    let url = '/api/users/';
-    const params = [];
-    if (search) params.push(`search=${encodeURIComponent(search)}`);
-    if (department) params.push(`department=${department}`);
-    if (position) params.push(`position_id=${position}`);
-
-    if (params.length > 0) {
-        url += '?' + params.join('&');
+function getOrdering(d) {
+    if (d.order && d.order.length > 0) {
+        const order = d.order[0];
+        const column = d.columns[order.column].data;
+        const dir = order.dir === 'asc' ? '' : '-';
+        return dir + column;
     }
-
-    $.get(url, function(data) {
-        users = data.results || data;
-        renderUsers();
-    });
-}
-
-function renderUsers() {
-    const tbody = $('#users-body');
-    tbody.empty();
-
-    users.forEach(user => {
-        const canManageNetwork = user.can_manage_network ? 'Да' : 'Нет';
-        const computersCount = user.computers_info ? user.computers_info.length : 0;
-
-        tbody.append(`
-            <tr>
-                <td>${user.full_name}</td>
-                <td>${user.email}</td>
-                <td>${user.phone}</td>
-                <td>${getPositionName(user.position_id)}</td>
-                <td>${user.department_room || 'Не назначен'}</td>
-                <td>${computersCount}</td>
-                <td>${canManageNetwork}</td>
-                <td class="table-actions">
-                    <button class="btn btn-sm btn-outline-primary" onclick="editUser(${user.id})">
-                        <i class="bi bi-pencil"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${user.id})">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-info" onclick="viewUser(${user.id})">
-                        <i class="bi bi-eye"></i>
-                    </button>
-                </td>
-            </tr>
-        `);
-    });
-
-    // Инициализируем DataTable после загрузки данных
-    initializeDataTable();
+    return 'full_name';
 }
 
 function getPositionName(positionId) {
@@ -274,62 +338,267 @@ function getPositionName(positionId) {
         4: 'Техник',
         5: 'Администратор'
     };
-    return positions[positionId] || positionId;
+    return positions[positionId] || 'Неизвестно';
 }
 
-// Остальные функции без изменений...
+function loadDepartments() {
+    $.ajax({
+        url: '/api/departments/',
+        method: 'GET',
+        success: function(data) {
+            departments = Array.isArray(data) ? data : (data.results || []);
+
+            const filterSelect = $('#departmentFilter');
+            const modalSelect = $('#department');
+
+            filterSelect.empty();
+            modalSelect.empty();
+
+            filterSelect.append('<option value="">Все отделы</option>');
+            modalSelect.append('<option value="">Не выбран</option>');
+
+            departments.forEach(dept => {
+                const option = `<option value="${dept.id}">Комната ${dept.room_number}</option>`;
+                filterSelect.append(option);
+                modalSelect.append(option);
+            });
+        },
+        error: function(xhr) {
+            console.error('Error loading departments:', xhr);
+            showAlert('Ошибка при загрузке отделов', 'danger');
+        }
+    });
+}
+
+function applyFilters() {
+    if (dataTable) {
+        dataTable.ajax.reload();
+    }
+}
+
 function resetFilters() {
     $('#searchInput').val('');
     $('#departmentFilter').val('');
     $('#positionFilter').val('');
-    loadUsers();
+    if (dataTable) {
+        dataTable.ajax.reload();
+    }
 }
 
 function exportUsers() {
-    window.open('/api/users/export/', '_blank');
+    const search = $('#searchInput').val();
+    const department = $('#departmentFilter').val();
+    const position = $('#positionFilter').val();
+
+    let url = '/api/users/export/';
+    const params = [];
+    if (search) params.push(`search=${encodeURIComponent(search)}`);
+    if (department) params.push(`department=${department}`);
+    if (position) params.push(`position_id=${position}`);
+
+    if (params.length > 0) {
+        url += '?' + params.join('&');
+    }
+
+    window.open(url, '_blank');
+}
+
+function showAddModal() {
+    $('#userModalTitle').text('Добавить пользователя');
+    $('#userForm')[0].reset();
+    $('#userId').val('');
+    $('.invalid-feedback').hide();
+    $('.form-control, .form-select').removeClass('is-invalid');
+    $('#userModal').modal('show');
 }
 
 function editUser(id) {
-    const user = users.find(u => u.id === id);
-    if (user) {
-        $('#userModalTitle').text('Редактировать пользователя');
-        $('#userId').val(user.id);
-        $('#full_name').val(user.full_name);
-        $('#email').val(user.email);
-        $('#phone').val(user.phone);
-        $('#position_id').val(user.position_id);
-        $('#department').val(user.department || '');
+    $.ajax({
+        url: `/api/users/${id}/`,
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        success: function(user) {
+            $('#userModalTitle').text('Редактировать пользователя');
+            $('#userId').val(user.id);
+            $('#full_name').val(user.full_name);
+            $('#email').val(user.email);
+            $('#phone').val(user.phone);
+            $('#position_id').val(user.position_id);
+            $('#department').val(user.department || '');
 
-        $('#userModal').modal('show');
-    }
+            $('.invalid-feedback').hide();
+            $('.form-control, .form-select').removeClass('is-invalid');
+            $('#userModal').modal('show');
+        },
+        error: function(xhr) {
+            showAlert('Ошибка при загрузке данных пользователя', 'danger');
+        }
+    });
 }
 
 function viewUser(id) {
-    window.location.href = `/users/#${id}`;
+    $('#userDetailBody').html(`
+        <div class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+            <p class="mt-2">Загрузка данных...</p>
+        </div>
+    `);
+
+    $('#userDetailModal').modal('show');
+
+    $.ajax({
+        url: `/api/users/${id}/`,
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        success: function(user) {
+            $.ajax({
+                url: `/api/users/${id}/computer_history/`,
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': csrftoken
+                },
+                success: function(history) {
+                    const computersList = history.computers && history.computers.length > 0
+                        ? history.computers.map(c => `<li>${c.model} (SN: ${c.serial_number}) - ${c.os}</li>`).join('')
+                        : '<li class="text-muted">Нет закрепленных компьютеров</li>';
+
+                    const detailsHtml = `
+                        <div class="user-details">
+                            <h6 class="text-primary mb-3">Основная информация</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th style="width: 40%">ID:</th>
+                                    <td>${user.id}</td>
+                                </tr>
+                                <tr>
+                                    <th>ФИО:</th>
+                                    <td>${user.full_name}</td>
+                                </tr>
+                                <tr>
+                                    <th>Email:</th>
+                                    <td>${user.email}</td>
+                                </tr>
+                                <tr>
+                                    <th>Телефон:</th>
+                                    <td>${user.phone}</td>
+                                </tr>
+                                <tr>
+                                    <th>Должность:</th>
+                                    <td>${getPositionName(user.position_id)}</td>
+                                </tr>
+                                <tr>
+                                    <th>Отдел:</th>
+                                    <td>${user.department_room || 'Не назначен'}</td>
+                                </tr>
+                                <tr>
+                                    <th>Может управлять сетью:</th>
+                                    <td>${user.can_manage_network ? 'Да' : 'Нет'}</td>
+                                </tr>
+                            </table>
+
+                            <h6 class="text-primary mt-4 mb-3">Закрепленные компьютеры (${history.total_computers || 0})</h6>
+                            <ul class="list-group list-group-flush">
+                                ${computersList}
+                            </ul>
+                        </div>
+                    `;
+
+                    $('#userDetailBody').html(detailsHtml);
+                    $('#userDetailModalTitle').text(`Пользователь: ${user.full_name}`);
+                },
+                error: function() {
+                    $('#userDetailBody').html(`
+                        <div class="alert alert-danger">
+                            Ошибка загрузки истории компьютеров
+                        </div>
+                    `);
+                }
+            });
+        },
+        error: function(xhr) {
+            console.error('Error loading user details:', xhr);
+            $('#userDetailBody').html(`
+                <div class="alert alert-danger">
+                    Ошибка загрузки детальной информации
+                </div>
+            `);
+        }
+    });
 }
 
-function deleteUser(id) {
-    if (confirm('Вы уверены, что хотите удалить этого пользователя?')) {
-        $.ajax({
-            url: `/api/users/${id}/`,
-            type: 'DELETE',
-            success: function() {
-                loadUsers();
-                showAlert('Пользователь успешно удален', 'success');
-            },
-            error: function() {
-                showAlert('Ошибка при удалении пользователя', 'danger');
+function showDeleteConfirm(id) {
+    currentUserId = id;
+    $('#confirmDeleteModal').modal('show');
+}
+
+function confirmDelete() {
+    if (!currentUserId) return;
+
+    $.ajax({
+        url: `/api/users/${currentUserId}/`,
+        type: 'DELETE',
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        success: function() {
+            $('#confirmDeleteModal').modal('hide');
+            if (dataTable) {
+                dataTable.ajax.reload();
             }
-        });
-    }
+            showAlert('Пользователь успешно удален', 'success');
+            currentUserId = null;
+        },
+        error: function(xhr) {
+            $('#confirmDeleteModal').modal('hide');
+            showAlert('Ошибка при удалении пользователя: ' + (xhr.responseText || 'Неизвестная ошибка'), 'danger');
+            currentUserId = null;
+        }
+    });
 }
 
 function saveUser() {
+    let isValid = true;
+    const requiredFields = ['full_name', 'email', 'phone', 'position_id'];
+
+    requiredFields.forEach(fieldId => {
+        const field = $(`#${fieldId}`);
+        const value = field.val();
+
+        if (!value || value.trim() === '') {
+            field.addClass('is-invalid');
+            $(`#${fieldId}Error`).show();
+            isValid = false;
+        } else {
+            field.removeClass('is-invalid');
+            $(`#${fieldId}Error`).hide();
+        }
+    });
+
+    if (!isValid) {
+        showAlert('Пожалуйста, заполните все обязательные поля', 'warning');
+        return;
+    }
+
+    const email = $('#email').val();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        $('#email').addClass('is-invalid');
+        $('#emailError').text('Введите корректный email').show();
+        showAlert('Введите корректный email', 'warning');
+        return;
+    }
+
     const formData = {
-        full_name: $('#full_name').val(),
-        email: $('#email').val(),
-        phone: $('#phone').val(),
-        position_id: $('#position_id').val(),
+        full_name: $('#full_name').val().trim(),
+        email: $('#email').val().trim(),
+        phone: $('#phone').val().trim(),
+        position_id: parseInt($('#position_id').val()),
         department: $('#department').val() || null
     };
 
@@ -340,35 +609,67 @@ function saveUser() {
     $.ajax({
         url: url,
         type: method,
-        contentType: 'application/json',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json'
+        },
         data: JSON.stringify(formData),
-        success: function() {
+        success: function(response) {
+            console.log('Success:', response);
             $('#userModal').modal('hide');
-            loadUsers();
+            if (dataTable) {
+                dataTable.ajax.reload();
+            }
             showAlert('Пользователь успешно сохранен', 'success');
         },
-        error: function(xhr) {
-            showAlert('Ошибка при сохранении пользователя: ' + xhr.responseText, 'danger');
+        error: function(xhr, status, error) {
+            console.error('Error:', xhr.responseText);
+            let errorMessage = 'Ошибка при сохранении пользователя';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (typeof response === 'object') {
+                    const errors = [];
+                    for (const [key, value] of Object.entries(response)) {
+                        if (Array.isArray(value)) {
+                            errors.push(...value);
+                        } else if (typeof value === 'string') {
+                            errors.push(value);
+                        } else {
+                            errors.push(JSON.stringify(value));
+                        }
+                    }
+                    errorMessage += ': ' + errors.join(', ');
+                } else {
+                    errorMessage += ': ' + response;
+                }
+            } catch (e) {
+                errorMessage += ': ' + (xhr.statusText || 'Неизвестная ошибка');
+            }
+            showAlert(errorMessage, 'danger');
         }
     });
 }
 
 function showAlert(message, type) {
-    const alert = $(`
-        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+    const alertId = 'alert-' + Date.now();
+    const alertHtml = `
+        <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
             ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" onclick="$('#${alertId}').alert('close')"></button>
         </div>
-    `);
-    $('.container-fluid').prepend(alert);
-    setTimeout(() => alert.alert('close'), 5000);
+    `;
+
+    $('#alert-container').append(alertHtml);
+
+    setTimeout(() => {
+        $(`#${alertId}`).alert('close');
+    }, 5000);
 }
 
-// Открытие модального окна для добавления
-$('#userModal').on('show.bs.modal', function() {
-    $('#userModalTitle').text('Добавить пользователя');
+$('#userModal').on('hidden.bs.modal', function() {
     $('#userForm')[0].reset();
-    $('#userId').val('');
+    $('.invalid-feedback').hide();
+    $('.form-control, .form-select').removeClass('is-invalid');
 });
 </script>
 {% endblock %}

@@ -1,4 +1,3 @@
-<!-- templates/database_backup.html -->
 {% extends 'base.html' %}
 
 {% block title %}Резервное копирование - Локальная компьютерная сеть{% endblock %}
@@ -16,7 +15,6 @@
 </div>
 
 <div class="container-fluid">
-    <!-- Создание резервной копии -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -45,7 +43,6 @@
         </div>
     </div>
 
-    <!-- Восстановление из резервной копии -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -79,7 +76,6 @@
         </div>
     </div>
 
-    <!-- История резервных копий -->
     <div class="row">
         <div class="col-12">
             <div class="card">
@@ -116,7 +112,6 @@
     </div>
 </div>
 
-<!-- Модальное окно подтверждения восстановления -->
 <div class="modal fade" id="restoreConfirmModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -160,16 +155,14 @@ function initializeDataTable() {
             url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/ru.json'
         },
         pageLength: 10,
-        order: [[2, 'desc']], // Сортировка по дате создания (новые сверху)
+        order: [[2, 'desc']],
         columnDefs: [
-            { orderable: false, targets: 4 } // Отключаем сортировку для действий
+            { orderable: false, targets: 4 }
         ]
     });
 }
 
 function loadBackupHistory() {
-    // В реальном приложении здесь будет AJAX запрос к API
-    // Покажем демо-данные
     const demoData = [
         {
             filename: 'backup_20241129_1430.sql',
@@ -238,7 +231,6 @@ function createBackup() {
 
     showLoading('Создание резервной копии...');
 
-    // В реальном приложении здесь будет AJAX запрос
     setTimeout(() => {
         showAlert('Резервная копия успешно создана!', 'success');
         loadBackupHistory();
@@ -272,7 +264,6 @@ function confirmRestore() {
     $('#restoreConfirmModal').modal('hide');
     showLoading('Восстановление из резервной копии...');
 
-    // В реальном приложении здесь будет AJAX запрос
     setTimeout(() => {
         showAlert('База данных успешно восстановлена из резервной копии!', 'success');
         loadBackupHistory();
@@ -282,10 +273,8 @@ function confirmRestore() {
 function downloadBackup(filename) {
     showLoading('Подготовка файла для скачивания...');
 
-    // В реальном приложении здесь будет AJAX запрос для скачивания
     setTimeout(() => {
         showAlert(`Файл ${filename} готов к скачиванию`, 'info');
-        // Здесь будет логика скачивания файла
     }, 1000);
 }
 
@@ -293,7 +282,6 @@ function deleteBackup(filename) {
     if (confirm(`Вы уверены, что хотите удалить резервную копию "${filename}"?`)) {
         showLoading('Удаление резервной копии...');
 
-        // В реальном приложении здесь будет AJAX запрос
         setTimeout(() => {
             showAlert('Резервная копия успешно удалена', 'success');
             loadBackupHistory();
@@ -302,7 +290,6 @@ function deleteBackup(filename) {
 }
 
 function showLoading(message) {
-    // Простая реализация показа загрузки
     console.log(message);
 }
 

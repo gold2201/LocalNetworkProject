@@ -1,4 +1,3 @@
-<!-- templates/host-computers.html -->
 {% extends 'base.html' %}
 {% load static %}
 
@@ -30,7 +29,6 @@
             </div>
         </div>
 
-        <!-- Фильтры и действия -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -79,7 +77,6 @@
             </div>
         </div>
 
-        <!-- Таблица хост-компьютеров -->
         <div class="row">
             <div class="col-12">
                 <div class="card">
@@ -126,7 +123,6 @@
                             <div class="col-md-6">
                                 <div class="d-flex justify-content-end">
                                     <nav id="pagination-controls">
-                                        <!-- Пагинация загружается динамически -->
                                     </nav>
                                 </div>
                             </div>
@@ -138,7 +134,6 @@
     </div>
 </div>
 
-<!-- Модальное окно для просмотра деталей -->
 <div class="modal fade" id="hostComputerDetailModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -150,7 +145,6 @@
             </div>
             <div class="modal-body">
                 <div id="host-computer-detail-content">
-                    <!-- Содержимое загружается динамически -->
                 </div>
             </div>
             <div class="modal-footer">
@@ -163,7 +157,6 @@
 
 {% block extra_js %}
 <script>
-// Глобальные переменные
 let allHostComputers = [];
 let filteredHostComputers = [];
 let currentPage = 1;
@@ -175,12 +168,10 @@ $(document).ready(function() {
 });
 
 function setupEventListeners() {
-    // Поиск по Enter
     $('#searchFilter').on('keypress', function(e) {
         if (e.which === 13) applyFilters();
     });
 
-    // Автоматический фильтр при изменении
     let filterTimer;
     $('#hostnameFilter, #ipFilter, #departmentFilter, #hasDepartmentFilter, #searchFilter').on('input change', function() {
         clearTimeout(filterTimer);
@@ -193,7 +184,6 @@ function loadAllHostComputers() {
 
     const params = new URLSearchParams();
 
-    // Собираем все фильтры
     const hostname = $('#hostnameFilter').val();
     const ip = $('#ipFilter').val();
     const department = $('#departmentFilter').val();
@@ -229,20 +219,15 @@ function applyFilters() {
     const searchFilter = $('#searchFilter').val().toLowerCase();
 
     filteredHostComputers = allHostComputers.filter(host => {
-        // Фильтр по имени хоста
         if (hostnameFilter && !host.hostname.toLowerCase().includes(hostnameFilter)) return false;
 
-        // Фильтр по IP-адресу
         if (ipFilter && !host.ip_address.toLowerCase().includes(ipFilter)) return false;
 
-        // Фильтр по ID отдела
         if (departmentFilter && host.department !== departmentFilter) return false;
 
-        // Фильтр по наличию отдела
         if (hasDepartmentFilter === 'true' && !host.department) return false;
         if (hasDepartmentFilter === 'false' && host.department) return false;
 
-        // Универсальный поиск
         if (searchFilter) {
             const searchableText = [
                 host.hostname || '',
@@ -334,12 +319,10 @@ function updatePagination() {
 
     let html = '<ul class="pagination pagination-sm mb-0">';
 
-    // Предыдущая страница
     html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
         <a class="page-link" href="#" onclick="goToPage(${currentPage - 1}); return false;">Назад</a>
     </li>`;
 
-    // Страницы
     const maxVisiblePages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
@@ -350,7 +333,6 @@ function updatePagination() {
         </li>`;
     }
 
-    // Следующая страница
     html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
         <a class="page-link" href="#" onclick="goToPage(${currentPage + 1}); return false;">Вперед</a>
     </li>`;
@@ -507,7 +489,6 @@ function showLoadingModal() {
 }
 
 function hideLoadingModal() {
-    // Автоматически скрывается при загрузке данных
 }
 
 function showAlert(message, type) {

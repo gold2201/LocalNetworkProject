@@ -7,16 +7,14 @@ from .models import (
 
 class DepartmentSerializer(serializers.ModelSerializer):
     computers_count = serializers.SerializerMethodField()
-    users_count = serializers.SerializerMethodField()  # ✅ ДОБАВЛЕНО
-    host_computers_count = serializers.SerializerMethodField()  # ✅ ДОБАВЛЕНО
+    users_count = serializers.SerializerMethodField()
+    host_computers_count = serializers.SerializerMethodField()
     avg_computers_per_employee = serializers.SerializerMethodField()
     is_large_department = serializers.SerializerMethodField()
 
-    # ✅ ИСПРАВЛЕНО: hostcomputer -> host_computers (теперь это множество)
-    host_computers_info = serializers.SerializerMethodField()  # ✅ ИЗМЕНЕНО
+    host_computers_info = serializers.SerializerMethodField()
 
-    # Для обратной совместимости (если нужно)
-    first_host_computer_ip = serializers.SerializerMethodField()  # ✅ ДОБАВЛЕНО
+    first_host_computer_ip = serializers.SerializerMethodField()
 
     employee_phones = serializers.ListField(
         child=serializers.IntegerField(),
@@ -25,17 +23,14 @@ class DepartmentSerializer(serializers.ModelSerializer):
         default=list
     )
 
-    # ✅ УДАЛЕНО: hostcomputer = serializers.PrimaryKeyRelatedField(read_only=True)
-    # Теперь используем host_computers_info
-
     class Meta:
         model = Department
         fields = [
             'id', 'room_number', 'internal_phone',
             'employee_count', 'employee_phones',
-            'computers_count', 'users_count',  # ✅ ДОБАВЛЕНО
-            'host_computers_count', 'host_computers_info',  # ✅ ИЗМЕНЕНО
-            'first_host_computer_ip',  # ✅ ДОБАВЛЕНО
+            'computers_count', 'users_count',
+            'host_computers_count', 'host_computers_info',
+            'first_host_computer_ip',
             'avg_computers_per_employee',
             'is_large_department'
         ]
@@ -47,25 +42,21 @@ class DepartmentSerializer(serializers.ModelSerializer):
         ]
 
     def get_computers_count(self, obj):
-        """Количество компьютеров в отделе"""
         if hasattr(obj, 'computers_count'):
             return obj.computers_count
         return obj.computers.count() if hasattr(obj, 'computers') else 0
 
     def get_users_count(self, obj):
-        """Количество пользователей в отделе - НОВЫЙ МЕТОД"""
         if hasattr(obj, 'users_count'):
             return obj.users_count
         return obj.users.count() if hasattr(obj, 'users') else 0
 
     def get_host_computers_count(self, obj):
-        """Количество хост-компьютеров в отделе - НОВЫЙ МЕТОД"""
         if hasattr(obj, 'host_computers_count'):
             return obj.host_computers_count
         return obj.host_computers.count() if hasattr(obj, 'host_computers') else 0
 
     def get_host_computers_info(self, obj):
-        """Информация о всех хост-компьютерах отдела - НОВЫЙ МЕТОД"""
         if hasattr(obj, 'host_computers'):
             hosts = obj.host_computers.all()
             return [
@@ -80,25 +71,21 @@ class DepartmentSerializer(serializers.ModelSerializer):
         return []
 
     def get_first_host_computer_ip(self, obj):
-        """IP первого хост-компьютера (для обратной совместимости) - НОВЫЙ МЕТОД"""
         if hasattr(obj, 'host_computers'):
             first_host = obj.host_computers.first()
             return first_host.ip_address if first_host else None
         return None
 
     def get_avg_computers_per_employee(self, obj):
-        """Среднее количество компьютеров на сотрудника"""
         computers_count = self.get_computers_count(obj)
         if obj.employee_count > 0:
             return round(computers_count / obj.employee_count, 2)
         return 0
 
     def get_is_large_department(self, obj):
-        """Проверка, является ли отдел крупным"""
         return obj.employee_count > 10
 
     def validate_room_number(self, value):
-        """Валидация номера комнаты"""
         if value < 100 or value > 599:
             raise serializers.ValidationError(
                 "Номер комнаты должен быть от 100 до 599"
@@ -106,19 +93,17 @@ class DepartmentSerializer(serializers.ModelSerializer):
         return value
 
     def validate_employee_count(self, value):
-        """Валидация количества сотрудников"""
         if value < 1:
             raise serializers.ValidationError(
                 "В отделе должен быть хотя бы 1 сотрудник"
             )
-        if value > 50:  # ✅ УВЕЛИЧЕНО с 20 до 50
+        if value > 50:
             raise serializers.ValidationError(
                 "Слишком много сотрудников для одного отдела"
             )
         return value
 
     def validate_employee_phones(self, value):
-        """Валидация списка телефонов"""
         if not isinstance(value, list):
             raise serializers.ValidationError("employee_phones должен быть списком")
 
@@ -134,11 +119,9 @@ class DepartmentSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        """Общая валидация"""
         room_number = attrs.get('room_number')
         employee_count = attrs.get('employee_count', 0)
 
-        # ✅ УСЛОВИЕ ИСПРАВЛЕНО
         if employee_count > 30 and room_number and room_number < 200:
             raise serializers.ValidationError({
                 'room_number': 'Крупные отделы (более 30 сотрудников) размещаются в комнатах 200+'
@@ -282,29 +265,19 @@ class NetworkComputerSerializer(serializers.ModelSerializer):
 
 
 class NetworkSerializer(serializers.ModelSerializer):
-    equipment_port_count = serializers.IntegerField(
-        source='equipment.port_count',
-        read_only=True
-    )
-    equipment_type = serializers.CharField(
-        source='equipment.type',
-        read_only=True
-    )
-
-    network_computers = NetworkComputerSerializer(
-        source='networkcomputer_set',
-        many=True,
-        read_only=True
-    )
+    equipment_port_count = serializers.IntegerField(source='equipment.port_count', read_only=True)
+    equipment_type = serializers.CharField(source='equipment.type', read_only=True)
+    network_computers = NetworkComputerSerializer(source='networkcomputer_set', many=True, read_only=True)
+    computers_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Network
         fields = [
             'id', 'subnet_mask', 'vlan', 'ip_range',
             'equipment', 'equipment_port_count', 'equipment_type',
-            'network_computers'
+            'network_computers', 'computers_count'
         ]
-        read_only_fields = ['equipment_port_count', 'equipment_type', 'network_computers']
+        read_only_fields = ['equipment_port_count', 'equipment_type', 'network_computers', 'computers_count']
         extra_kwargs = {
             'equipment': {'required': True}
         }
@@ -327,7 +300,6 @@ class EquipmentSerializer(serializers.ModelSerializer):
             return 'Видеозвонки'
 
 
-# ✅ НОВЫЙ СЕРИАЛИЗАТОР для HostComputer (полный)
 class HostComputerSerializer(serializers.ModelSerializer):
     department_room = serializers.CharField(
         source='department.room_number',

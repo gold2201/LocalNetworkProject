@@ -1,4 +1,3 @@
-<!-- templates/sql_query.html -->
 {% extends 'base.html' %}
 
 {% block title %}SQL Запросы - Локальная компьютерная сеть{% endblock %}
@@ -16,7 +15,6 @@
 </div>
 
 <div class="container-fluid">
-    <!-- Редактор запросов -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -110,7 +108,6 @@
         </div>
     </div>
 
-    <!-- История запросов -->
     <div class="row mt-4">
         <div class="col-12">
             <div class="card">
@@ -147,7 +144,6 @@
     </div>
 </div>
 
-<!-- Модальное окно подтверждения -->
 <div class="modal fade" id="confirmModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -172,7 +168,6 @@
     </div>
 </div>
 
-<!-- Модальное окно для просмотра таблиц -->
 <div class="modal fade" id="tablesModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
@@ -182,7 +177,6 @@
             </div>
             <div class="modal-body">
                 <div id="tables-list">
-                    <!-- Список таблиц загружается здесь -->
                 </div>
             </div>
         </div>
@@ -269,7 +263,6 @@ function executeQuery() {
 
     showLoading('Выполнение запроса...');
 
-    // Отправляем запрос на сервер
     $.ajax({
         url: '/api/database/execute_sql/',
         type: 'POST',
@@ -280,7 +273,6 @@ function executeQuery() {
             const executionTime = ((endTime - startTime) / 1000).toFixed(2);
 
             if (response.status === 'warning' && response.requires_confirmation) {
-                // Показываем модальное окно подтверждения для опасных операций
                 $('#confirmMessage').text('Этот запрос может изменить или удалить данные.');
                 $('#confirmQuery').text(query);
                 $('#confirmModal').modal('show');
@@ -359,7 +351,6 @@ function explainQuery() {
 
 function formatQuery() {
     const query = $('#sqlQuery').val();
-    // Простое форматирование - в реальном приложении можно использовать библиотеку
     const formatted = query
         .replace(/SELECT/gi, '\nSELECT')
         .replace(/FROM/gi, '\nFROM')
@@ -379,16 +370,13 @@ function displayResults(response, executionTime) {
     if (response.type === 'query' && response.results && response.results.length > 0) {
         currentResults = response.results;
 
-        // Создаем таблицу с результатами
         let html = '<div class="table-responsive"><table class="table table-striped table-bordered table-sm"><thead><tr>';
 
-        // Заголовки столбцов
         response.columns.forEach(column => {
             html += `<th>${column}</th>`;
         });
         html += '</tr></thead><tbody>';
 
-        // Данные
         response.results.forEach(row => {
             html += '<tr>';
             response.columns.forEach(column => {
@@ -444,7 +432,6 @@ function exportResults() {
 
     showLoading('Подготовка данных для экспорта...');
 
-    // Отправляем запрос на экспорт
     $.ajax({
         url: '/api/database/export_sql_results/',
         type: 'POST',
@@ -454,7 +441,6 @@ function exportResults() {
             responseType: 'blob'
         },
         success: function(blob) {
-            // Создаем ссылку для скачивания
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -516,7 +502,6 @@ function useTable(tableName) {
 }
 
 function showTableStructure(tableName) {
-    // Реализация показа структуры таблицы
     alert(`Структура таблицы ${tableName} будет показана здесь`);
 }
 
@@ -530,7 +515,6 @@ function addToHistory(query, response, executionTime) {
     };
 
     queryHistory.unshift(historyItem);
-    // Сохраняем только последние 50 запросов
     queryHistory = queryHistory.slice(0, 50);
     localStorage.setItem('sqlQueryHistory', JSON.stringify(queryHistory));
 

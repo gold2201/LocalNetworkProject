@@ -18,7 +18,6 @@ class SoftwareViewSet(ExportMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Software.objects.prefetch_related('computers')
 
-        # Применяем кастомные фильтры
         search = self.request.query_params.get('search')
         license_type = self.request.query_params.get('license_type')
 
@@ -46,7 +45,6 @@ class SoftwareViewSet(ExportMixin, viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         print(f"Software create request: {request.data}")
 
-        # Проверка обязательных полей
         required_fields = ['name', 'version', 'vendor', 'license']
         for field in required_fields:
             if field not in request.data:
@@ -55,7 +53,6 @@ class SoftwareViewSet(ExportMixin, viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        # Проверка уникальности name+version
         name = request.data.get('name')
         version = request.data.get('version')
         if name and version:
@@ -83,7 +80,6 @@ class SoftwareViewSet(ExportMixin, viewsets.ModelViewSet):
         name = request.data.get('name')
         version = request.data.get('version')
 
-        # Проверка уникальности name+version при обновлении
         if name and version:
             if name != instance.name or version != instance.version:
                 if Software.objects.filter(name=name, version=version).exists():
@@ -133,7 +129,6 @@ class SoftwareViewSet(ExportMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def license_summary(self, request):
-        """Сводка по лицензиям"""
         try:
             license_stats = Software.objects.values('license').annotate(
                 count=Count('id'),

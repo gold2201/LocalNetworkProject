@@ -1,4 +1,3 @@
-<!-- templates/reports.html -->
 {% extends 'base.html' %}
 
 {% block title %}Отчеты - Локальная компьютерная сеть{% endblock %}
@@ -16,7 +15,6 @@
 </div>
 
 <div class="container-fluid">
-    <!-- Карточки отчетов -->
     <div class="row">
         <div class="col-md-4 mb-4">
             <div class="card stat-card">
@@ -58,7 +56,6 @@
         </div>
     </div>
 
-    <!-- Дополнительные отчеты -->
     <div class="row">
         <div class="col-md-4 mb-4">
             <div class="card stat-card">
@@ -100,7 +97,6 @@
         </div>
     </div>
 
-    <!-- Результаты отчетов -->
     <div class="row mt-4">
         <div class="col-12">
             <div class="card">
@@ -133,7 +129,6 @@ function generateComputerReport() {
 function generateUserReport() {
     showLoading('Генерация отчета по пользователям...');
 
-    // Здесь можно добавить вызов API для отчета по пользователям
     setTimeout(() => {
         showInfo('Отчет по пользователям будет доступен в следующей версии');
     }, 1000);
@@ -172,7 +167,6 @@ function generateDepartmentReport() {
 function generateComprehensiveReport() {
     showLoading('Генерация комплексного отчета...');
 
-    // Здесь можно собрать данные из нескольких источников
     setTimeout(() => {
         showInfo('Комплексный отчет будет доступен в следующей версии');
     }, 1000);
