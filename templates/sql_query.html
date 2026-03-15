@@ -226,10 +226,10 @@ function initializeDataTable() {
 
 function loadQuickQuery(type) {
     const queries = {
-        computers: 'SELECT * FROM "LocalComputerNetwork"."Computer" LIMIT 50',
-        users: 'SELECT * FROM "LocalComputerNetwork"."User" LIMIT 50',
-        departments: 'SELECT * FROM "LocalComputerNetwork"."Department" LIMIT 50',
-        networks: 'SELECT * FROM "LocalComputerNetwork"."Network" LIMIT 50',
+        computers: 'SELECT * FROM "Computer" LIMIT 50',
+        users: 'SELECT * FROM "User" LIMIT 50',
+        departments: 'SELECT * FROM "Department" LIMIT 50',
+        networks: 'SELECT * FROM "Network" LIMIT 50',
         tables: `SELECT
                     table_schema as schema,
                     table_name as name,
