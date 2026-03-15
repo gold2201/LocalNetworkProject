@@ -4,158 +4,165 @@
 {% block title %}Сети - Локальная компьютерная сеть{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
-.card-body.p-2 { padding: 0.5rem !important; }
-.table td, .table th { padding: 0.5rem; }
-.vlan-badge {
-    background-color: #6f42c1;
-    color: white;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-weight: bold;
-    font-size: 0.85rem;
-}
+    .vlan-badge {
+        background-color: #6f42c1;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 0.85rem;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Сети</h4>
-        <div>
-            <button class="btn btn-sm btn-outline-primary me-1" onclick="exportNetworks()">
-                <i class="bi bi-download"></i>
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()">
-                <i class="bi bi-arrow-clockwise"></i>
-            </button>
-        </div>
-    </div>
-
-    <div class="row g-2 mb-3">
-        <div class="col-6 col-md-3">
-            <div class="card bg-primary bg-opacity-10">
-                <div class="card-body p-2 text-center">
-                    <small class="text-muted">Всего сетей</small>
-                    <h5 class="mb-0" id="total-networks">-</h5>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card bg-success bg-opacity-10">
-                <div class="card-body p-2 text-center">
-                    <small class="text-muted">С компьютерами</small>
-                    <h5 class="mb-0" id="networks-with-pc">-</h5>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card bg-info bg-opacity-10">
-                <div class="card-body p-2 text-center">
-                    <small class="text-muted">Всего ПК</small>
-                    <h5 class="mb-0" id="total-computers">-</h5>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card bg-warning bg-opacity-10">
-                <div class="card-body p-2 text-center">
-                    <small class="text-muted">Ср. VLAN</small>
-                    <h5 class="mb-0" id="avg-vlan">-</h5>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-2 mb-3">
-        <div class="col-12 col-md-4">
-            <input type="text" class="form-control form-control-sm" id="searchFilter" placeholder="Поиск по VLAN, IP, оборудованию...">
-        </div>
-        <div class="col-6 col-md-3">
-            <select class="form-select form-select-sm" id="equipmentFilter">
-                <option value="">Все оборудование</option>
-                <option value="Роутер">Роутер</option>
-                <option value="Свитч">Свитч</option>
-                <option value="Фаервол">Фаервол</option>
-            </select>
-        </div>
-        <div class="col-6 col-md-3">
-            <select class="form-select form-select-sm" id="hasComputersFilter">
-                <option value="">Все сети</option>
-                <option value="true">С компьютерами</option>
-                <option value="false">Без компьютеров</option>
-            </select>
-        </div>
-        <div class="col-12 col-md-2">
-            <button class="btn btn-sm btn-primary w-100" onclick="applyFilters()">
-                <i class="bi bi-search"></i> Поиск
-            </button>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header bg-light py-2 px-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <span>Список сетей</span>
-                <span class="badge bg-secondary" id="total-count">0</span>
-            </div>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-sm table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>VLAN</th>
-                            <th>IP диапазон</th>
-                            <th>Оборудование</th>
-                            <th class="text-center">Порты</th>
-                            <th class="text-center">Компьютеры</th>
-                            <th class="text-end">Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody id="networks-tbody">
-                        <tr>
-                            <td colspan="6" class="text-center py-4">
-                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
-                                    <span class="visually-hidden">Загрузка...</span>
-                                </div>
-                                Загрузка...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h1><i class="bi bi-diagram-3"></i> Управление сетями</h1>
+                <p class="lead">Просмотр и анализ сетевой инфраструктуры</p>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="networkModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white py-2">
-                <h6 class="modal-title"><i class="bi bi-info-circle me-2"></i>Детали сети</h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title text-muted">Всего сетей</h5>
+                            <h2 id="total-networks" class="mb-0">-</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-diagram-3 fs-1 text-primary"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="modal-body" id="network-details">
-                <div class="text-center py-3">
-                    <div class="spinner-border spinner-border-sm text-primary"></div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title text-muted">С компьютерами</h5>
+                            <h2 id="networks-with-pc" class="mb-0">-</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-pc fs-1 text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title text-muted">Всего ПК</h5>
+                            <h2 id="total-computers" class="mb-0">-</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-pc-display fs-1 text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title text-muted">Ср. VLAN</h5>
+                            <h2 id="avg-vlan" class="mb-0">-</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-hash fs-1 text-warning"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<div class="modal fade" id="computersModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white py-2">
-                <h6 class="modal-title"><i class="bi bi-pc me-2"></i>Компьютеры в сети</h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <input type="text" id="searchFilter" class="form-control" placeholder="Поиск по VLAN, IP, оборудованию...">
+                        </div>
+                        <div class="col-md-3">
+                            <select id="equipmentFilter" class="form-select">
+                                <option value="">Все оборудование</option>
+                                <option value="Роутер">Роутер</option>
+                                <option value="Свитч">Свитч</option>
+                                <option value="Фаервол">Фаервол</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select id="hasComputersFilter" class="form-select">
+                                <option value="">Все сети</option>
+                                <option value="true">С компьютерами</option>
+                                <option value="false">Без компьютеров</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary flex-fill" onclick="applyFilters()">
+                                    <i class="bi bi-search"></i> Поиск
+                                </button>
+                                <button class="btn btn-secondary flex-fill" onclick="resetFilters()">
+                                    <i class="bi bi-arrow-clockwise"></i> Сброс
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="modal-body p-0" id="computers-list">
-                <div class="text-center py-3">
-                    <div class="spinner-border spinner-border-sm text-success"></div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Список сетей</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="exportNetworks()" title="Экспорт">
+                            <i class="bi bi-download"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()" title="Обновить">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>VLAN</th>
+                                    <th>IP диапазон</th>
+                                    <th>Оборудование</th>
+                                    <th class="text-center">Порты</th>
+                                    <th class="text-center">Компьютеры</th>
+                                    <th class="text-end">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="networks-tbody">
+                                <!-- ... -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -175,6 +182,13 @@ $(document).ready(function() {
     console.log('jQuery загружен, начинаем загрузку данных...');
     loadData();
 });
+
+function resetFilters() {
+    $('#searchFilter').val('');
+    $('#equipmentFilter').val('');
+    $('#hasComputersFilter').val('');
+    applyFilters();
+}
 
 function loadData() {
     console.log('Загрузка статистики...');
